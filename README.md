@@ -125,6 +125,21 @@ ESPN's slug is the lowercase team id for every team except Washington, which the
 If a logo fails to load, the app drops that image and the row renders without it, so
 nothing breaks if those URLs ever change.
 
+## Deploying a change (and the cache)
+
+Push to `main` and GitHub Pages republishes within a minute or so. Browsers, though,
+happily hold on to the old `app.js` — which shows up as a change that is definitely live
+but that you cannot see.
+
+To force everyone onto the new code, bump the `?v=` number in **three** places whenever
+you deploy something visible:
+
+- the `<script type="module" src="app.js?v=N">` tag in `docs/index.html`
+- the two imports at the top of `docs/app.js` (`./teams.js?v=N`, `./config.js?v=N`)
+
+They must match. A plain hard refresh (Ctrl/Cmd-Shift-R) also works for one person on one
+device; the version bump is what fixes it for everybody.
+
 ## Updating the lines
 
 All 32 teams, their win totals and odds live in `docs/teams.js`. Edit that one file and

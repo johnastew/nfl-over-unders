@@ -1,5 +1,5 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js?v=2';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=2';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
