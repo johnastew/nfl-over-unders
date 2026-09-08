@@ -1,4 +1,4 @@
 node_modules/
 *.db
-*.db-journal
+*.db-*
 .DS_Store
