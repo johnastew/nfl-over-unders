@@ -162,6 +162,10 @@ async function savePickRequest(userId, teamId, choice) {
   });
 }
 
+async function restFetchUsers() {
+  return (await rest('/users?select=id,name&order=created_at.asc,id.asc')) || [];
+}
+
 async function restFetchResults() {
   const rows = (await rest('/results?select=team_id,wins,losses')) || [];
   const out = {};
@@ -246,6 +250,10 @@ async function localSavePick(userId, teamId, choice) {
   writeLocal(store);
 }
 
+async function localFetchUsers() {
+  return readLocal().users.map(({ id, name }) => ({ id, name }));
+}
+
 async function localFetchResults() {
   return readLocal().results || {};
 }
@@ -280,6 +288,7 @@ const backend = isConfigured
       fetchPicks: restFetchPicks,
       savePick: restSavePick,
       fetchEveryone: restFetchEveryone,
+      fetchUsers: restFetchUsers,
       fetchResults: restFetchResults,
       saveResult: restSaveResult
     }
@@ -289,6 +298,7 @@ const backend = isConfigured
       fetchPicks: localFetchPicks,
       savePick: localSavePick,
       fetchEveryone: localFetchEveryone,
+      fetchUsers: localFetchUsers,
       fetchResults: localFetchResults,
       saveResult: localSaveResult
     };
@@ -673,6 +683,31 @@ function th(text, className) {
   return cell;
 }
 
+async function populateUserPicker() {
+  const select = el('userSelect');
+  let people = [];
+  try {
+    people = await backend.fetchUsers();
+  } catch {
+    // Not being able to list names is no reason to block signing in by typing one.
+    el('returningBlock').hidden = true;
+    return;
+  }
+  if (!people.length) {
+    el('returningBlock').hidden = true;
+    return;
+  }
+  select.length = 1;
+  for (const person of people) {
+    const option = document.createElement('option');
+    option.value = String(person.id);
+    option.textContent = person.name;
+    select.appendChild(option);
+  }
+  select.value = '';
+  el('returningBlock').hidden = false;
+}
+
 async function enterApp(nextUser) {
   user = nextUser;
   storeUser(user);
@@ -692,12 +727,26 @@ el('loginForm').addEventListener('submit', async (event) => {
   }
 });
 
+el('userSelect').addEventListener('change', async (event) => {
+  const id = Number(event.target.value);
+  if (!id) return;
+  showError(el('loginError'), '');
+  const name = event.target.selectedOptions[0].textContent;
+  try {
+    await enterApp({ id, name });
+  } catch (error) {
+    showError(el('loginError'), error.message);
+    event.target.value = '';
+  }
+});
+
 el('switchUser').addEventListener('click', () => {
   user = null;
   picks = {};
   storeUser(null);
   el('nameInput').value = '';
   showView('login');
+  populateUserPicker();
 });
 
 document.querySelectorAll('.tab').forEach((tab) => {
@@ -713,7 +762,10 @@ document.querySelectorAll('.tab').forEach((tab) => {
   teams = TEAMS;
   if (!isConfigured) el('localBanner').hidden = false;
   const stored = loadStoredUser();
-  if (!stored) return showView('login');
+  if (!stored) {
+    showView('login');
+    return populateUserPicker();
+  }
   try {
     // Confirm the remembered account still exists (the table may have been reset).
     const confirmed = await backend.fetchUser(stored.id);
@@ -725,5 +777,6 @@ document.querySelectorAll('.tab').forEach((tab) => {
   } catch {
     storeUser(null);
     showView('login');
+    populateUserPicker();
   }
 })();

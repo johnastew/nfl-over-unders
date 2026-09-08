@@ -51,11 +51,14 @@ work, because the page uses JavaScript modules.)
 
 ## A note on "login" and security
 
-There is no real login. Typing a name finds or creates a user by that name
-(case-insensitive), and the Supabase anon key is public in the page's JavaScript — that's
-normal for this kind of app, but it means **anyone with the link can view or change
-anyone's picks.** That's fine for a group of friends playing for bragging rights. Don't
-put anything sensitive in it.
+There is no real login. Your name is your account: type it to create one, or pick it from
+the dropdown of existing names to get back to your picks on another device. Names are
+matched case-insensitively, so `alice` and `Alice` are the same person.
+
+The Supabase anon key is public in the page's JavaScript — normal for this kind of app,
+but combined with the name list it means **anyone with the link can open anyone's account
+and change their picks** (until the deadline, at least). That's fine for a group of
+friends playing for bragging rights. Don't put anything sensitive in it.
 
 ## The pick deadline
 

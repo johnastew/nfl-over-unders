@@ -24,7 +24,16 @@
 
     <section id="loginView" class="view card" hidden>
       <h2>Who are you?</h2>
-      <p class="muted">Just type your name &mdash; no password. Use the same name each time to find your picks.</p>
+      <p class="muted">No password &mdash; your name is your account. Pick it from the list on
+      any device to get back to your picks.</p>
+
+      <div id="returningBlock" hidden>
+        <select id="userSelect" aria-label="Choose an existing name">
+          <option value="">Choose your name&hellip;</option>
+        </select>
+        <p class="or"><span>or start a new one</span></p>
+      </div>
+
       <form id="loginForm">
         <input id="nameInput" type="text" maxlength="40" placeholder="Your name" autocomplete="name" required>
         <button type="submit">Start picking</button>

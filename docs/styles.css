@@ -13,6 +13,10 @@
 
 * { box-sizing: border-box; }
 
+/* Elements toggled with the hidden attribute must stay hidden even when a class of
+   theirs sets a display (.who is display:flex, which would otherwise win). */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   padding: 0 16px 48px;
@@ -292,3 +296,25 @@ caption {
 .choice:disabled { cursor: default; opacity: 0.85; }
 .choice:disabled:hover { border-color: var(--line); }
 .choice[aria-pressed="true"]:disabled { opacity: 1; }
+
+#returningBlock { margin-top: 14px; }
+
+#userSelect {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
