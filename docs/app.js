@@ -398,6 +398,7 @@ function renderPicks() {
       const row = document.createElement('div');
       row.className = 'team';
       row.style.backgroundImage = teamWash(team);
+      row.style.borderColor = teamBorder(team);
 
       const info = document.createElement('div');
       info.className = 'team-info';
@@ -433,13 +434,22 @@ function renderPicks() {
   }
 }
 
+function teamRgb(team) {
+  const hex = teamColor(team.id).replace('#', '');
+  return [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+}
+
 // A left-to-right wash of the team's color over the card's white background. The far
 // end is the same color at zero alpha rather than `transparent`, which some browsers
 // interpolate through grey.
 function teamWash(team) {
-  const hex = teamColor(team.id).replace('#', '');
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const [r, g, b] = teamRgb(team);
   return `linear-gradient(90deg, rgba(${r}, ${g}, ${b}, 0.12) 0%, rgba(${r}, ${g}, ${b}, 0) 65%)`;
+}
+
+function teamBorder(team) {
+  const [r, g, b] = teamRgb(team);
+  return `rgba(${r}, ${g}, ${b}, 0.5)`;
 }
 
 function logoImg(team, size) {
