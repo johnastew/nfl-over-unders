@@ -1,6 +1,6 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=8';
-import { playPixelBurst } from './pixel-fx.js?v=8';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=8';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=9';
+import { playPixelBurst } from './pixel-fx.js?v=9';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=9';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
@@ -382,6 +382,13 @@ function buildStandings(users, picksByUser, results) {
 }
 
 function showView(name) {
+  // Everyone's picks stay out of sight until kickoff, so nobody can copy off anybody.
+  // This only hides the tab — the picks are still readable through the API by anyone
+  // determined enough. It is a courtesy, not a secret.
+  const revealed = picksLocked();
+  document.querySelector('.tab[data-view="everyone"]').hidden = !revealed;
+  if (name === 'everyone' && !revealed) name = 'picks';
+
   for (const [key, node] of Object.entries(views)) node.hidden = key !== name;
   el('appViews').hidden = name === 'login';
   el('who').hidden = !user;
@@ -404,7 +411,10 @@ function renderPicks() {
   const locked = picksLocked();
   el('lockBanner').hidden = !locked;
   el('lockNotice').hidden = locked;
-  if (!locked) el('lockNotice').textContent = `Picks lock at kickoff — ${lockLabel()} ET.`;
+  if (!locked) {
+    el('lockNotice').textContent =
+      `Picks lock at kickoff — ${lockLabel()} ET. Everyone's picks stay hidden until then.`;
+  }
   el('whoName').textContent = `Signed in as ${user.name}`;
   const picked = pickCount();
   const atLimit = picked >= MAX_PICKS;

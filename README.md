@@ -90,6 +90,11 @@ To move the deadline, edit the timestamp in **both** places (the two `picks` wri
 policies and `PICKS_LOCK_AT`), re-run `supabase-schema.sql`, and push. Note the app's
 timestamps are UTC: 8:20 PM ET in September is `00:20Z` the next day.
 
+The **Everyone** tab is hidden until that same moment, so nobody can copy someone else's
+picks before the deadline. That is a courtesy rather than a secret — the picks are still
+readable through the API by anyone determined, since every row stays world-readable. The
+tab reappears on its own at kickoff, with no deploy needed.
+
 Entering results is deliberately **not** locked — that has to keep working all season.
 
 ## Scoring
