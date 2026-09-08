@@ -71,10 +71,12 @@
       <section id="standingsView" class="view" hidden>
         <div class="table-scroll" id="leaderboard"></div>
         <p class="muted scoring-note">
-          One point per correct pick. Ties are broken by <strong>units</strong> &mdash; what a
-          $1 bet on each of your correct picks would have returned at the listed odds, so
-          the gutsier call wins a tie. A team is only scored once it's mathematically
-          settled; everything else shows as pending.
+          One point per correct pick. Level on points? The tie goes to
+          <strong>margin</strong> &mdash; how far your correct picks beat their lines added
+          up, so being decisively right beats scraping in. Still level after that, it's
+          <strong>units</strong>: what a $1 bet on each correct pick would have returned at
+          the listed odds. A team is only scored once it's mathematically settled;
+          everything else shows as pending.
         </p>
         <details id="resultsEditor">
           <summary>Enter results</summary>
@@ -93,6 +95,6 @@
 
   <!-- ?v= busts the browser cache; bump it in this tag and in app.js's two
        imports whenever you deploy a change. See the README. -->
-  <script type="module" src="app.js?v=9"></script>
+  <script type="module" src="app.js?v=10"></script>
 </body>
 </html>

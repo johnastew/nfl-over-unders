@@ -1,6 +1,6 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=9';
-import { playPixelBurst } from './pixel-fx.js?v=9';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=9';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=10';
+import { playPixelBurst } from './pixel-fx.js?v=10';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=10';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
@@ -352,6 +352,18 @@ function outcomeFor(team, record) {
   return null;
 }
 
+// How far a correct pick has beaten its line. Both cases measure the cushion that is
+// already guaranteed, so the number is meaningful mid-season and only grows: an over
+// climbs as the team keeps winning, an under as it keeps losing. Once all 17 games are
+// played the two are just |final wins - line|.
+function marginFor(team, record, outcome) {
+  const wins = Number(record?.wins) || 0;
+  const losses = Number(record?.losses) || 0;
+  if (outcome === 'over') return wins - team.line;
+  if (outcome === 'under') return team.line - (GAMES - losses);
+  return 0;
+}
+
 function buildStandings(users, picksByUser, results) {
   const settled = [];
   for (const team of teams) {
@@ -364,20 +376,35 @@ function buildStandings(users, picksByUser, results) {
     let correct = 0;
     let wrong = 0;
     let units = 0;
+    let margin = 0;
     for (const { team, outcome } of settled) {
       const pick = theirPicks[team.id];
       if (!pick) continue;
       if (pick === outcome) {
         correct += 1;
         units += unitsWon(pick === 'over' ? team.overOdds : team.underOdds);
+        margin += marginFor(team, results[team.id], outcome);
       } else {
         wrong += 1;
       }
     }
-    return { name: person.name, correct, wrong, units, missing: settled.length - correct - wrong };
+    return {
+      name: person.name,
+      correct,
+      wrong,
+      units,
+      margin,
+      missing: settled.length - correct - wrong
+    };
   });
 
-  rows.sort((a, b) => b.correct - a.correct || b.units - a.units || a.name.localeCompare(b.name));
+  rows.sort(
+    (a, b) =>
+      b.correct - a.correct ||
+      b.margin - a.margin ||
+      b.units - a.units ||
+      a.name.localeCompare(b.name)
+  );
   return { rows, settledCount: settled.length };
 }
 
@@ -683,7 +710,7 @@ async function renderStandings() {
 
   const table = document.createElement('table');
   const head = document.createElement('tr');
-  head.append(th('#'), th('Name', 'team-col'), th('Correct'), th('Wrong'), th('Units'));
+  head.append(th('#'), th('Name', 'team-col'), th('Correct'), th('Wrong'), th('Margin'), th('Units'));
   const thead = document.createElement('thead');
   thead.appendChild(head);
   table.appendChild(thead);
@@ -691,8 +718,12 @@ async function renderStandings() {
   const tbody = document.createElement('tbody');
   rows.forEach((row, index) => {
     // Anyone level with the person above shares their rank.
+    const previous = rows[index - 1];
     const tied =
-      index > 0 && rows[index - 1].correct === row.correct && rows[index - 1].units === row.units;
+      index > 0 &&
+      previous.correct === row.correct &&
+      previous.margin === row.margin &&
+      previous.units === row.units;
     const tr = document.createElement('tr');
     const rank = document.createElement('td');
     rank.textContent = tied ? '' : String(index + 1);
@@ -705,10 +736,13 @@ async function renderStandings() {
     const wrong = document.createElement('td');
     wrong.className = 'pick-under';
     wrong.textContent = String(row.wrong);
+    const margin = document.createElement('td');
+    margin.className = 'tally';
+    margin.textContent = (row.margin >= 0 ? '+' : '') + row.margin.toFixed(1);
     const units = document.createElement('td');
     units.className = 'tally';
     units.textContent = (row.units >= 0 ? '+' : '') + row.units.toFixed(2);
-    tr.append(rank, name, correct, wrong, units);
+    tr.append(rank, name, correct, wrong, margin, units);
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);

@@ -99,11 +99,17 @@ Entering results is deliberately **not** locked — that has to keep working all
 
 ## Scoring
 
-The **Standings** tab ranks everyone by **correct picks** out of their 6, with **units** as
-the tiebreaker: what a $1 bet on each of your correct picks would have returned at that
-team's listed odds. So a correct +115 underdog call earns 1.15 units against 0.71 for a
--140 favorite, and the gutsier read wins a tie without making the headline number harder
-to follow than "you got 19".
+The **Standings** tab ranks everyone by **correct picks** out of their 6. Two tiebreakers
+sit under that, in order:
+
+1. **Margin** — how far your correct picks beat their lines, added up. An over that hits is
+   `wins - line`; an under that hits is `line - (17 - losses)`, the cushion already
+   guaranteed. Both grow through the season and settle at `|final wins - line|`. Calling
+   Miami's under 3.5 and watching them finish 2-15 is worth 1.5; scraping in at 3-14 is
+   0.5. It rewards reading the season rather than reading the odds, and needs nothing from
+   the players — it comes from the records entered below the leaderboard.
+2. **Units** — what a $1 bet on each correct pick would have returned at that team's listed
+   odds, so a correct +115 underdog call earns 1.15 against 0.71 for a -140 favorite.
 
 Every line is a half-win, so no pick can push — each team resolves Over or Under.
 
