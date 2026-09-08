@@ -120,11 +120,12 @@ input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px
 }
 
 .team {
+  /* the gradient is set per team in app.js and sits on this white background */
+  background-color: var(--card);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: var(--card);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;

@@ -103,6 +103,15 @@ Records are entered under **Enter results** on the same tab: a W and an L per te
 Anyone can edit them — the same open trust model as picks — so agree among yourselves who
 keeps them current. Count a tie as half a win.
 
+## Team colors
+
+Each pick card carries a left-to-right wash of that team's primary color at 8% alpha,
+fading out at 65% across the card, over the card's white background. The colors live in
+`TEAM_COLORS` in `docs/teams.js`; the gradient is built in `teamWash()` in `docs/app.js`.
+
+The fade ends at the same color with zero alpha rather than the `transparent` keyword,
+which some browsers interpolate through grey.
+
 ## Logos
 
 Team logos are loaded from ESPN's CDN (`a.espncdn.com/i/teamlogos/nfl/500/<slug>.png`),

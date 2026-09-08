@@ -44,3 +44,19 @@ const LOGO_SLUGS = { WAS: 'wsh' };
 export function teamLogoUrl(teamId) {
   return `https://a.espncdn.com/i/teamlogos/nfl/500/${LOGO_SLUGS[teamId] || teamId.toLowerCase()}.png`;
 }
+
+// Each team's primary brand color, used as a faint wash behind its card.
+const TEAM_COLORS = {
+  ARI: '#97233F', ATL: '#A71930', BAL: '#241773', BUF: '#00338D',
+  CAR: '#0085CA', CHI: '#0B162A', CIN: '#FB4F14', CLE: '#311D00',
+  DAL: '#041E42', DEN: '#FB4F14', DET: '#0076B6', GB:  '#203731',
+  HOU: '#03202F', IND: '#002C5F', JAX: '#006778', KC:  '#E31837',
+  LV:  '#101820', LAC: '#0080C6', LAR: '#003594', MIA: '#008E97',
+  MIN: '#4F2683', NE:  '#002244', NO:  '#D3BC8D', NYG: '#0B2265',
+  NYJ: '#125740', PHI: '#004C54', PIT: '#FFB612', SF:  '#AA0000',
+  SEA: '#002244', TB:  '#D50A0A', TEN: '#0C2340', WAS: '#5A1414'
+};
+
+export function teamColor(teamId) {
+  return TEAM_COLORS[teamId] || '#14171f';
+}

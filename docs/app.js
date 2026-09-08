@@ -1,4 +1,4 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl } from './teams.js';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js';
 
 const STORAGE_KEY = 'nflou.user';
@@ -397,6 +397,7 @@ function renderPicks() {
     for (const team of divisionTeams) {
       const row = document.createElement('div');
       row.className = 'team';
+      row.style.backgroundImage = teamWash(team);
 
       const info = document.createElement('div');
       info.className = 'team-info';
@@ -430,6 +431,15 @@ function renderPicks() {
     }
     container.appendChild(section);
   }
+}
+
+// A left-to-right wash of the team's color over the card's white background. The far
+// end is the same color at zero alpha rather than `transparent`, which some browsers
+// interpolate through grey.
+function teamWash(team) {
+  const hex = teamColor(team.id).replace('#', '');
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `linear-gradient(90deg, rgba(${r}, ${g}, ${b}, 0.08) 0%, rgba(${r}, ${g}, ${b}, 0) 65%)`;
 }
 
 function logoImg(team, size) {
