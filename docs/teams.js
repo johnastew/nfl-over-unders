@@ -36,3 +36,11 @@ export const TEAMS = [
 ];
 
 export const TEAM_IDS = new Set(TEAMS.map((t) => t.id));
+
+// ESPN serves a logo per team at a predictable URL. Their slug is the lowercase team id
+// for all but Washington, which they call "wsh".
+const LOGO_SLUGS = { WAS: 'wsh' };
+
+export function teamLogoUrl(teamId) {
+  return `https://a.espncdn.com/i/teamlogos/nfl/500/${LOGO_SLUGS[teamId] || teamId.toLowerCase()}.png`;
+}

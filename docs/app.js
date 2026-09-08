@@ -1,4 +1,4 @@
-import { TEAMS, TEAM_IDS } from './teams.js';
+import { TEAMS, TEAM_IDS, teamLogoUrl } from './teams.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js';
 
 const STORAGE_KEY = 'nflou.user';
@@ -248,13 +248,16 @@ function renderPicks() {
       row.className = 'team';
 
       const info = document.createElement('div');
+      info.className = 'team-info';
+      const text = document.createElement('div');
       const name = document.createElement('div');
       name.className = 'team-name';
       name.textContent = team.name;
       const line = document.createElement('div');
       line.className = 'team-line';
       line.textContent = `Win total ${team.line}`;
-      info.append(name, line);
+      text.append(name, line);
+      info.append(logoImg(team, 30), text);
 
       const choices = document.createElement('div');
       choices.className = 'choices';
@@ -275,6 +278,19 @@ function renderPicks() {
     }
     container.appendChild(section);
   }
+}
+
+function logoImg(team, size) {
+  const img = document.createElement('img');
+  img.className = 'logo';
+  img.src = teamLogoUrl(team.id);
+  img.alt = '';
+  img.width = size;
+  img.height = size;
+  img.loading = 'lazy';
+  // If the logo can't load, drop it rather than showing a broken image.
+  img.addEventListener('error', () => img.remove());
+  return img;
 }
 
 function groupByDivision(list) {
@@ -337,7 +353,9 @@ async function renderEveryone() {
     const row = document.createElement('tr');
     const teamCell = document.createElement('td');
     teamCell.className = 'team-col';
-    teamCell.textContent = `${team.name} ${team.line}`;
+    const teamLabel = document.createElement('span');
+    teamLabel.textContent = `${team.name} ${team.line}`;
+    teamCell.append(logoImg(team, 20), teamLabel);
     row.appendChild(teamCell);
 
     for (const person of data.users) {

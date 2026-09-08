@@ -56,6 +56,16 @@ normal for this kind of app, but it means **anyone with the link can view or cha
 anyone's picks.** That's fine for a group of friends playing for bragging rights. Don't
 put anything sensitive in it.
 
+## Logos
+
+Team logos are loaded from ESPN's CDN (`a.espncdn.com/i/teamlogos/nfl/500/<slug>.png`),
+derived from the team ids in `docs/teams.js` — no image files are stored in this repo.
+ESPN's slug is the lowercase team id for every team except Washington, which they call
+`wsh`; that one exception lives in `LOGO_SLUGS` in `docs/teams.js`.
+
+If a logo fails to load, the app drops that image and the row renders without it, so
+nothing breaks if those URLs ever change.
+
 ## Updating the lines
 
 All 32 teams, their win totals and odds live in `docs/teams.js`. Edit that one file and

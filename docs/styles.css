@@ -212,3 +212,14 @@ td.tally { color: var(--muted); font-size: 13px; }
   font-size: 14px;
   margin: 0 0 16px;
 }
+
+.logo {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.team-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+td.team-col .logo { width: 20px; height: 20px; vertical-align: middle; margin-right: 8px; }
