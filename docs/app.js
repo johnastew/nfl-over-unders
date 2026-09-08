@@ -1,8 +1,12 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js?v=4';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=4';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js?v=5';
+import { playPixelBurst } from './pixel-fx.js?v=5';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=5';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
+
+// Everyone calls the same number of teams, and choosing which ones is part of the game.
+const MAX_PICKS = 6;
 
 // Picks lock at kickoff of the Wednesday opener: 8:20 PM ET on Sept 9, 2026.
 // September is EDT (UTC-4), hence 00:20Z on the 10th.
@@ -162,6 +166,20 @@ async function savePickRequest(userId, teamId, choice) {
   });
 }
 
+async function restRemovePick(userId, teamId) {
+  try {
+    await rest(
+      `/picks?user_id=eq.${encodeURIComponent(userId)}&team_id=eq.${encodeURIComponent(teamId)}`,
+      { method: 'DELETE' }
+    );
+  } catch (error) {
+    if (error.status === 403 || /row-level security/i.test(error.message)) {
+      throw new Error('Picks are locked — the season has started.');
+    }
+    throw error;
+  }
+}
+
 async function restFetchUsers() {
   return (await rest('/users?select=id,name&order=created_at.asc,id.asc')) || [];
 }
@@ -250,6 +268,12 @@ async function localSavePick(userId, teamId, choice) {
   writeLocal(store);
 }
 
+async function localRemovePick(userId, teamId) {
+  const store = readLocal();
+  if (store.picks[userId]) delete store.picks[userId][teamId];
+  writeLocal(store);
+}
+
 async function localFetchUsers() {
   return readLocal().users.map(({ id, name }) => ({ id, name }));
 }
@@ -287,6 +311,7 @@ const backend = isConfigured
       fetchUser: restFetchUser,
       fetchPicks: restFetchPicks,
       savePick: restSavePick,
+      removePick: restRemovePick,
       fetchEveryone: restFetchEveryone,
       fetchUsers: restFetchUsers,
       fetchResults: restFetchResults,
@@ -297,6 +322,7 @@ const backend = isConfigured
       fetchUser: localFetchUser,
       fetchPicks: localFetchPicks,
       savePick: localSavePick,
+      removePick: localRemovePick,
       fetchEveryone: localFetchEveryone,
       fetchUsers: localFetchUsers,
       fetchResults: localFetchResults,
@@ -380,8 +406,13 @@ function renderPicks() {
   el('lockNotice').hidden = locked;
   if (!locked) el('lockNotice').textContent = `Picks lock at kickoff — ${lockLabel()} ET.`;
   el('whoName').textContent = `Signed in as ${user.name}`;
-  const picked = teams.filter((team) => picks[team.id]).length;
-  el('progress').textContent = `${picked} / ${teams.length} picked`;
+  const picked = pickCount();
+  const atLimit = picked >= MAX_PICKS;
+  el('progress').textContent = `${picked} / ${MAX_PICKS} picks used`;
+  el('pickHint').hidden = locked;
+  el('pickHint').textContent = atLimit
+    ? `That's all ${MAX_PICKS}. Tap one of your picks to remove it and free a slot.`
+    : `Choose any ${MAX_PICKS} teams. Tap a pick again to remove it.`;
 
   const container = el('teamList');
   container.innerHTML = '';
@@ -397,6 +428,7 @@ function renderPicks() {
     for (const team of divisionTeams) {
       const row = document.createElement('div');
       row.className = 'team';
+      row.dataset.team = team.id;
       row.style.backgroundImage = teamWash(team);
       row.style.borderColor = teamBorder(team);
 
@@ -421,7 +453,7 @@ function renderPicks() {
         button.dataset.choice = choice;
         const isPick = picks[team.id] === choice;
         button.setAttribute('aria-pressed', String(isPick));
-        button.disabled = locked;
+        button.disabled = locked || (atLimit && !picks[team.id]);
         if (isPick) button.style.borderColor = teamBorderSolid(team);
         const badge = document.createElement('span');
         badge.className = 'choice-badge';
@@ -498,18 +530,47 @@ function groupByDivision(list) {
 async function selectPick(teamId, choice) {
   if (picksLocked()) return;
   const previous = picks[teamId];
-  if (previous === choice) return;
-  picks[teamId] = choice;
+  const removing = previous === choice;
+
+  // Taking a new team needs a free slot; switching or removing one you already hold
+  // never does.
+  if (!removing && !previous && pickCount() >= MAX_PICKS) {
+    showError(
+      el('picksError'),
+      `You've used all ${MAX_PICKS} picks — tap one of your picks to free a slot.`
+    );
+    return;
+  }
+
+  if (removing) delete picks[teamId];
+  else picks[teamId] = choice;
   renderPicks();
   showError(el('picksError'), '');
+  if (!removing) burst(teamId);
+
   try {
-    await backend.savePick(user.id, teamId, choice);
+    if (removing) await backend.removePick(user.id, teamId);
+    else await backend.savePick(user.id, teamId, choice);
   } catch (error) {
     if (previous) picks[teamId] = previous;
     else delete picks[teamId];
     renderPicks();
-    showError(el('picksError'), `Could not save that pick: ${error.message}`);
+    showError(
+      el('picksError'),
+      `Could not ${removing ? 'remove' : 'save'} that pick: ${error.message}`
+    );
   }
+}
+
+function pickCount() {
+  return Object.keys(picks).length;
+}
+
+// renderPicks() rebuilds every row, so the card to animate is found after that re-render.
+function burst(teamId) {
+  const card = document.querySelector(`.team[data-team="${teamId}"]`);
+  const team = teams.find((t) => t.id === teamId);
+  if (card && team) playPixelBurst(card, teamColor(team.id));
 }
 
 async function renderEveryone() {

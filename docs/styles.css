@@ -122,6 +122,8 @@ input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px
 .team {
   /* the gradient is set per team in app.js and sits on this white background */
   background-color: var(--card);
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -309,11 +311,20 @@ caption {
 
 .banner-locked { background: #eef1f5; border-color: #ccd3dc; color: #38414f; }
 
-.lock-notice { margin: 0 2px 14px; }
+.lock-notice { margin: 0 2px 6px; }
+.pick-hint { margin: 0 2px 14px; }
 
-.choice:disabled { cursor: default; opacity: 0.85; }
+/* The pixel burst canvas, laid over a card for the length of the animation. */
+.pixel-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.choice:disabled { cursor: default; }
 .choice:disabled:hover { border-color: var(--line); }
-.choice[aria-pressed="true"]:disabled { opacity: 1; }
+.choice:disabled .choice-badge { opacity: 0.15; }
+.choice[aria-pressed="true"]:disabled .choice-badge { opacity: 1; }
 
 #returningBlock { margin-top: 14px; }
 

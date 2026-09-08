@@ -37,6 +37,7 @@ drop policy if exists "anon insert users" on users;
 drop policy if exists "anon read picks" on picks;
 drop policy if exists "anon insert picks" on picks;
 drop policy if exists "anon update picks" on picks;
+drop policy if exists "anon delete picks" on picks;
 drop policy if exists "anon read results" on results;
 drop policy if exists "anon insert results" on results;
 drop policy if exists "anon update results" on results;
@@ -55,6 +56,33 @@ create policy "anon insert picks" on picks for insert to anon
 create policy "anon update picks" on picks for update to anon
   using (now() < timestamptz '2026-09-10T00:20:00Z')
   with check (now() < timestamptz '2026-09-10T00:20:00Z');
+-- Removing a pick is how you free a slot, so it is allowed on the same terms as making
+-- one: before kickoff, and not after.
+create policy "anon delete picks" on picks for delete to anon
+  using (now() < timestamptz '2026-09-10T00:20:00Z');
+
 create policy "anon read results" on results for select to anon using (true);
 create policy "anon insert results" on results for insert to anon with check (true);
 create policy "anon update results" on results for update to anon using (true) with check (true);
+
+-- Each person picks 6 teams, enforced here so the cap holds even against the API directly.
+-- This is a trigger rather than a row level security policy because a policy whose
+-- expression queries picks would recurse.
+create or replace function enforce_pick_limit() returns trigger as $$
+begin
+  -- PostgREST upserts as "insert ... on conflict do update", and a BEFORE INSERT trigger
+  -- fires before the conflict is detected. The not exists clause is what lets someone
+  -- holding 6 picks still switch one of them between over and under.
+  if (select count(*) from picks where user_id = new.user_id) >= 6
+     and not exists (
+       select 1 from picks where user_id = new.user_id and team_id = new.team_id
+     ) then
+    raise exception 'pick limit reached: 6 teams per person';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists picks_limit on picks;
+create trigger picks_limit before insert on picks
+  for each row execute function enforce_pick_limit();

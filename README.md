@@ -1,7 +1,11 @@
 # NFL Win Totals Over/Under
 
 A dead-simple pick'em app for the 2026 NFL season. Everyone types their name, picks
-**Over** or **Under** on all 32 team win totals, and can see a grid of everyone's picks.
+**any 6 teams** and calls each one's win total **Over** or **Under**, and can see a grid of
+everyone's picks.
+
+Choosing which 6 is the game. Tap a pick again to remove it and free a slot; switching a
+team you already hold between over and under is always free.
 
 It's a static site (no build step) hosted on GitHub Pages, with picks stored in a free
 Supabase Postgres project.
@@ -27,6 +31,14 @@ API) and your **anon / public key** (Project Settings → API Keys). Put both in
 export const SUPABASE_URL = 'https://abcdefgh.supabase.co';
 export const SUPABASE_ANON_KEY = 'eyJhbGciOi...';
 ```
+
+**Changing the rules?** The 6-pick cap is enforced in two places that must agree: the
+`picks_limit` trigger in `supabase-schema.sql` and `MAX_PICKS` in `docs/app.js`. Edit both,
+re-run the SQL, and bump the cache-bust below.
+
+**Starting a season over.** To clear everyone's picks (for instance after a rules change),
+run `delete from picks;` in the Supabase SQL editor. That is irreversible and affects
+everybody — the only destructive step in this project.
 
 Commit and push that change. Until you do, the site runs in practice mode (picks stay in
 each person's own browser). Connecting Supabase switches it over automatically — practice
@@ -82,8 +94,8 @@ Entering results is deliberately **not** locked — that has to keep working all
 
 ## Scoring
 
-The **Standings** tab ranks everyone by **correct picks**, with **units** as the
-tiebreaker: what a $1 bet on each of your correct picks would have returned at that
+The **Standings** tab ranks everyone by **correct picks** out of their 6, with **units** as
+the tiebreaker: what a $1 bet on each of your correct picks would have returned at that
 team's listed odds. So a correct +115 underdog call earns 1.15 units against 0.71 for a
 -140 favorite, and the gutsier read wins a tie without making the headline number harder
 to follow than "you got 19".
