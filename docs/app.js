@@ -439,7 +439,7 @@ function renderPicks() {
 function teamWash(team) {
   const hex = teamColor(team.id).replace('#', '');
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `linear-gradient(90deg, rgba(${r}, ${g}, ${b}, 0.08) 0%, rgba(${r}, ${g}, ${b}, 0) 65%)`;
+  return `linear-gradient(90deg, rgba(${r}, ${g}, ${b}, 0.12) 0%, rgba(${r}, ${g}, ${b}, 0) 65%)`;
 }
 
 function logoImg(team, size) {

@@ -105,7 +105,7 @@ keeps them current. Count a tie as half a win.
 
 ## Team colors
 
-Each pick card carries a left-to-right wash of that team's primary color at 8% alpha,
+Each pick card carries a left-to-right wash of that team's primary color at 12% alpha,
 fading out at 65% across the card, over the card's white background. The colors live in
 `TEAM_COLORS` in `docs/teams.js`; the gradient is built in `teamWash()` in `docs/app.js`.
 
