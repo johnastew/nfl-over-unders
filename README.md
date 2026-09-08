@@ -6,6 +6,10 @@ A dead-simple pick'em app for the 2026 NFL season. Everyone types their name, pi
 It's a static site (no build step) hosted on GitHub Pages, with picks stored in a free
 Supabase Postgres project.
 
+**Before Supabase is connected the site still works**, in practice mode: picks save to
+your own browser only, and a banner says so. That's useful for trying it out, but your
+friends won't see each other's picks until you do the setup below.
+
 Lines and odds are DraftKings numbers as of Sept. 3, 2026, as published by CBS Sports.
 
 ## Setup
@@ -23,8 +27,9 @@ export const SUPABASE_URL = 'https://abcdefgh.supabase.co';
 export const SUPABASE_ANON_KEY = 'eyJhbGciOi...';
 ```
 
-Commit and push that change. Until you do, the site loads but tells you it isn't
-connected yet.
+Commit and push that change. Until you do, the site runs in practice mode (picks stay in
+each person's own browser). Connecting Supabase switches it over automatically — practice
+picks are not carried across, so everyone re-picks once.
 
 **3. Turn on GitHub Pages.** In the repo: **Settings → Pages → Source: Deploy from a
 branch**, then pick branch `main` and folder `/docs`. Save.

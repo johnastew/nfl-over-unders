@@ -202,3 +202,13 @@ td.tally { color: var(--muted); font-size: 13px; }
   .choices { width: 100%; }
   .choice { flex: 1; min-width: 0; }
 }
+
+.banner {
+  background: #fff6e0;
+  border: 1px solid #e6c766;
+  color: #6b4e08;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin: 0 0 16px;
+}

@@ -35,11 +35,20 @@ function storeUser(value) {
   }
 }
 
-// --- Supabase (PostgREST) access ------------------------------------------------
+// --- Backend A: Supabase (PostgREST) ------------------------------------------------
 // Supabase's REST API is plain HTTP, so this talks to it with fetch rather than pulling
 // in the JS SDK: one fewer dependency, and nothing to load from a CDN.
 
 const REST = `${SUPABASE_URL}/rest/v1`;
+
+function cleanName(rawName) {
+  const name = rawName.trim().replace(/\s+/g, ' ');
+  if (!name) throw new Error('Please enter a name.');
+  if (name.length > MAX_NAME_LENGTH) {
+    throw new Error(`Name must be ${MAX_NAME_LENGTH} characters or fewer.`);
+  }
+  return name;
+}
 
 async function rest(path, options = {}) {
   const res = await fetch(`${REST}${path}`, {
@@ -60,12 +69,8 @@ async function rest(path, options = {}) {
   return res.status === 204 ? null : res.json().catch(() => null);
 }
 
-async function signIn(rawName) {
-  const name = rawName.trim().replace(/\s+/g, ' ');
-  if (!name) throw new Error('Please enter a name.');
-  if (name.length > MAX_NAME_LENGTH) {
-    throw new Error(`Name must be ${MAX_NAME_LENGTH} characters or fewer.`);
-  }
+async function restSignIn(rawName) {
+  const name = cleanName(rawName);
   const nameKey = name.toLowerCase();
   const query = `/users?select=id,name&name_key=eq.${encodeURIComponent(nameKey)}`;
 
@@ -89,12 +94,12 @@ async function signIn(rawName) {
   }
 }
 
-async function fetchUser(userId) {
+async function restFetchUser(userId) {
   const [found] = (await rest(`/users?select=id,name&id=eq.${encodeURIComponent(userId)}`)) || [];
   return found || null;
 }
 
-async function fetchPicks(userId) {
+async function restFetchPicks(userId) {
   const rows =
     (await rest(`/picks?select=team_id,choice&user_id=eq.${encodeURIComponent(userId)}`)) || [];
   const result = {};
@@ -102,7 +107,7 @@ async function fetchPicks(userId) {
   return result;
 }
 
-async function savePick(userId, teamId, choice) {
+async function restSavePick(userId, teamId, choice) {
   if (!TEAM_IDS.has(teamId)) throw new Error('Unknown team.');
   if (choice !== 'over' && choice !== 'under') throw new Error('Pick must be over or under.');
   await rest('/picks', {
@@ -117,7 +122,7 @@ async function savePick(userId, teamId, choice) {
   });
 }
 
-async function fetchEveryone() {
+async function restFetchEveryone() {
   const [users, rows] = await Promise.all([
     rest('/users?select=id,name&order=created_at.asc,id.asc'),
     rest('/picks?select=user_id,team_id,choice')
@@ -132,6 +137,78 @@ async function fetchEveryone() {
   }
   return { users: users || [], picks: picksByUser, counts };
 }
+
+// --- Backend B: this browser only -----------------------------------------------
+// Used until docs/config.js points at a real Supabase project, so the site is usable
+// (and shareable-looking) straight away. Picks live in localStorage, which means they
+// are visible only on this device and to this browser.
+
+const LOCAL_KEY = 'nflou.local';
+
+function readLocal() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_KEY)) || { users: [], picks: {}, nextId: 1 };
+  } catch {
+    return { users: [], picks: {}, nextId: 1 };
+  }
+}
+
+function writeLocal(store) {
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(store));
+  } catch {
+    /* private mode — nothing to persist to */
+  }
+}
+
+async function localSignIn(rawName) {
+  const name = cleanName(rawName);
+  const nameKey = name.toLowerCase();
+  const store = readLocal();
+  const existing = store.users.find((u) => u.name_key === nameKey);
+  if (existing) return { id: existing.id, name: existing.name };
+  const created = { id: store.nextId++, name, name_key: nameKey };
+  store.users.push(created);
+  writeLocal(store);
+  return { id: created.id, name: created.name };
+}
+
+async function localFetchUser(userId) {
+  const found = readLocal().users.find((u) => u.id === userId);
+  return found ? { id: found.id, name: found.name } : null;
+}
+
+async function localFetchPicks(userId) {
+  return readLocal().picks[userId] || {};
+}
+
+async function localSavePick(userId, teamId, choice) {
+  if (!TEAM_IDS.has(teamId)) throw new Error('Unknown team.');
+  if (choice !== 'over' && choice !== 'under') throw new Error('Pick must be over or under.');
+  const store = readLocal();
+  (store.picks[userId] ||= {})[teamId] = choice;
+  writeLocal(store);
+}
+
+async function localFetchEveryone() {
+  const store = readLocal();
+  const counts = {};
+  for (const team of teams) counts[team.id] = { over: 0, under: 0 };
+  for (const byTeam of Object.values(store.picks)) {
+    for (const [teamId, choice] of Object.entries(byTeam)) {
+      if (counts[teamId]) counts[teamId][choice] += 1;
+    }
+  }
+  return {
+    users: store.users.map(({ id, name }) => ({ id, name })),
+    picks: store.picks,
+    counts
+  };
+}
+
+const backend = isConfigured
+  ? { signIn: restSignIn, fetchUser: restFetchUser, fetchPicks: restFetchPicks, savePick: restSavePick, fetchEveryone: restFetchEveryone }
+  : { signIn: localSignIn, fetchUser: localFetchUser, fetchPicks: localFetchPicks, savePick: localSavePick, fetchEveryone: localFetchEveryone };
 
 function showView(name) {
   for (const [key, node] of Object.entries(views)) node.hidden = key !== name;
@@ -217,7 +294,7 @@ async function selectPick(teamId, choice) {
   renderPicks();
   showError(el('picksError'), '');
   try {
-    await savePick(user.id, teamId, choice);
+    await backend.savePick(user.id, teamId, choice);
   } catch (error) {
     if (previous) picks[teamId] = previous;
     else delete picks[teamId];
@@ -231,7 +308,7 @@ async function renderEveryone() {
   container.innerHTML = '<p class="empty">Loading…</p>';
   let data;
   try {
-    data = await fetchEveryone();
+    data = await backend.fetchEveryone();
   } catch (error) {
     container.innerHTML = '';
     container.appendChild(Object.assign(document.createElement('p'), {
@@ -295,7 +372,7 @@ function th(text, className) {
 async function enterApp(nextUser) {
   user = nextUser;
   storeUser(user);
-  picks = await fetchPicks(user.id);
+  picks = await backend.fetchPicks(user.id);
   renderPicks();
   showView('picks');
 }
@@ -305,7 +382,7 @@ el('loginForm').addEventListener('submit', async (event) => {
   showError(el('loginError'), '');
   const name = el('nameInput').value;
   try {
-    await enterApp(await signIn(name));
+    await enterApp(await backend.signIn(name));
   } catch (error) {
     showError(el('loginError'), error.message);
   }
@@ -329,22 +406,14 @@ document.querySelectorAll('.tab').forEach((tab) => {
 
 (async function init() {
   teams = TEAMS;
-  if (!isConfigured) {
-    showView('login');
-    showError(
-      el('loginError'),
-      'This site has not been connected to a database yet. Fill in docs/config.js with your Supabase project URL and anon key (see the README).'
-    );
-    el('loginForm').querySelector('button').disabled = true;
-    return;
-  }
+  if (!isConfigured) el('localBanner').hidden = false;
   const stored = loadStoredUser();
   if (!stored) return showView('login');
   try {
     // Confirm the remembered account still exists (the table may have been reset).
-    const confirmed = await fetchUser(stored.id);
+    const confirmed = await backend.fetchUser(stored.id);
     if (!confirmed) throw new Error('Unknown user.');
-    picks = await fetchPicks(confirmed.id);
+    picks = await backend.fetchPicks(confirmed.id);
     user = confirmed;
     renderPicks();
     showView('picks');
