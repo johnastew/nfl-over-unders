@@ -3,7 +3,7 @@
 //
 // These two values are meant to be public — they ship in the page's JavaScript and are
 // safe to commit. See the README's security note for what that does and doesn't protect.
-export const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+export const SUPABASE_URL = 'https://qzxohiwgpivvmdquzaow.supabase.co';
 export const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
 export const isConfigured =
