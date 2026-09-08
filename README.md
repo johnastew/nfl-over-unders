@@ -16,7 +16,8 @@ Lines and odds are DraftKings numbers as of Sept. 3, 2026, as published by CBS S
 
 **1. Create the database.** Sign up at [supabase.com](https://supabase.com) (free tier is
 plenty) and create a project. Open **SQL Editor → New query**, paste the contents of
-[`supabase-schema.sql`](supabase-schema.sql), and run it.
+[`supabase-schema.sql`](supabase-schema.sql), and run it. It is safe to re-run later —
+that is how you pick up new tables when the app gains a feature.
 
 **2. Connect the app.** In Supabase, grab your **Project URL** (Project Settings → Data
 API) and your **anon / public key** (Project Settings → API Keys). Put both into
@@ -56,6 +57,29 @@ normal for this kind of app, but it means **anyone with the link can view or cha
 anyone's picks.** That's fine for a group of friends playing for bragging rights. Don't
 put anything sensitive in it.
 
+## Scoring
+
+The **Standings** tab ranks everyone by **correct picks**, with **units** as the
+tiebreaker: what a $1 bet on each of your correct picks would have returned at that
+team's listed odds. So a correct +115 underdog call earns 1.15 units against 0.71 for a
+-140 favorite, and the gutsier read wins a tie without making the headline number harder
+to follow than "you got 19".
+
+Every line is a half-win, so no pick can push — each team resolves Over or Under.
+
+A team is scored as soon as it is **mathematically settled**, not at season's end:
+
+- the **over** hits the moment wins pass the line (11 wins beats 10.5)
+- the **under** locks the moment enough losses make the line unreachable (8 losses caps a
+  team at 9 wins, so a 10.5 line is dead)
+
+Everything else shows as pending and counts for nobody, so the leaderboard is meaningful
+from midseason on rather than sitting empty until January.
+
+Records are entered under **Enter results** on the same tab: a W and an L per team.
+Anyone can edit them — the same open trust model as picks — so agree among yourselves who
+keeps them current. Count a tie as half a win.
+
 ## Logos
 
 Team logos are loaded from ESPN's CDN (`a.espncdn.com/i/teamlogos/nfl/500/<slug>.png`),
@@ -80,4 +104,4 @@ push. Picks are keyed by team abbreviation, so they survive a line change.
 | `docs/teams.js` | Teams, win totals, odds |
 | `docs/config.js` | Your Supabase URL and anon key |
 | `docs/styles.css` | Styling |
-| `supabase-schema.sql` | Database setup, run once in Supabase |
+| `supabase-schema.sql` | Database setup, safe to re-run in Supabase |

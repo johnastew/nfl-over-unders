@@ -223,3 +223,64 @@ td.tally { color: var(--muted); font-size: 13px; }
 .team-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
 
 td.team-col .logo { width: 20px; height: 20px; vertical-align: middle; margin-right: 8px; }
+
+.scoring-note { margin: 12px 2px 18px; line-height: 1.5; }
+
+caption {
+  caption-side: bottom;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 12px;
+}
+
+#resultsEditor {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+#resultsEditor summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+#resultsEditor > .muted { margin: 8px 0 14px; }
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.result-row .team-info { flex: 1 1 auto; }
+
+.status {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status.pending { color: var(--muted); font-weight: 400; }
+
+.record-fields { display: flex; gap: 8px; flex: 0 0 auto; }
+
+.record-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.record-field input {
+  width: 58px;
+  padding: 6px 8px;
+  font-size: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+}
+
+@media (max-width: 520px) {
+  .result-row { flex-wrap: wrap; }
+  .status { order: 3; }
+  .record-fields { margin-left: auto; }
+}

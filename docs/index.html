@@ -21,6 +21,7 @@
       <strong>Practice mode.</strong> Picks are saved only in this browser, so your friends
       can't see them yet. Connect a Supabase project (see the README) to share them.
     </p>
+
     <section id="loginView" class="view card" hidden>
       <h2>Who are you?</h2>
       <p class="muted">Just type your name &mdash; no password. Use the same name each time to find your picks.</p>
@@ -31,27 +32,45 @@
       <p class="error" id="loginError" hidden></p>
     </section>
 
-    <section id="picksView" class="view" hidden>
+    <div id="appViews" hidden>
       <div class="toolbar">
         <nav class="tabs">
           <button type="button" class="tab active" data-view="picks">My picks</button>
           <button type="button" class="tab" data-view="everyone">Everyone</button>
+          <button type="button" class="tab" data-view="standings">Standings</button>
         </nav>
         <span class="progress" id="progress"></span>
       </div>
-      <p class="error" id="picksError" hidden></p>
-      <div id="teamList"></div>
-    </section>
 
-    <section id="everyoneView" class="view" hidden>
-      <div class="toolbar">
-        <nav class="tabs">
-          <button type="button" class="tab" data-view="picks">My picks</button>
-          <button type="button" class="tab active" data-view="everyone">Everyone</button>
-        </nav>
-      </div>
-      <div class="table-scroll" id="everyoneTable"></div>
-    </section>
+      <p class="error" id="picksError" hidden></p>
+
+      <section id="picksView" class="view" hidden>
+        <div id="teamList"></div>
+      </section>
+
+      <section id="everyoneView" class="view" hidden>
+        <div class="table-scroll" id="everyoneTable"></div>
+      </section>
+
+      <section id="standingsView" class="view" hidden>
+        <div class="table-scroll" id="leaderboard"></div>
+        <p class="muted scoring-note">
+          One point per correct pick. Ties are broken by <strong>units</strong> &mdash; what a
+          $1 bet on each of your correct picks would have returned at the listed odds, so
+          the gutsier call wins a tie. A team is only scored once it's mathematically
+          settled; everything else shows as pending.
+        </p>
+        <details id="resultsEditor">
+          <summary>Enter results</summary>
+          <p class="muted">
+            Each team's record so far. Anyone can edit these, so agree among yourselves who
+            keeps them updated. Count a tie as half a win.
+          </p>
+          <p class="error" id="resultsError" hidden></p>
+          <div id="resultsList"></div>
+        </details>
+      </section>
+    </div>
   </main>
 
   <footer class="muted">Lines from DraftKings as of Sept. 3, 2026, via CBS Sports. For friendly bragging rights only.</footer>

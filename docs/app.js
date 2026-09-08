@@ -8,7 +8,8 @@ const el = (id) => document.getElementById(id);
 const views = {
   login: el('loginView'),
   picks: el('picksView'),
-  everyone: el('everyoneView')
+  everyone: el('everyoneView'),
+  standings: el('standingsView')
 };
 
 let user = null;
@@ -51,15 +52,21 @@ function cleanName(rawName) {
 }
 
 async function rest(path, options = {}) {
-  const res = await fetch(`${REST}${path}`, {
-    ...options,
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
-  });
+  let res;
+  try {
+    res = await fetch(`${REST}${path}`, {
+      ...options,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+  } catch {
+    // fetch only rejects on a network-level failure, which reads as "Failed to fetch".
+    throw new Error("Couldn't reach the picks database — check your connection and try again.");
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const error = new Error(body.message || `Request failed (${res.status}).`);
@@ -119,6 +126,22 @@ async function restSavePick(userId, teamId, choice) {
       choice,
       updated_at: new Date().toISOString()
     })
+  });
+}
+
+async function restFetchResults() {
+  const rows = (await rest('/results?select=team_id,wins,losses')) || [];
+  const out = {};
+  for (const row of rows) out[row.team_id] = { wins: Number(row.wins), losses: Number(row.losses) };
+  return out;
+}
+
+async function restSaveResult(teamId, wins, losses) {
+  if (!TEAM_IDS.has(teamId)) throw new Error('Unknown team.');
+  await rest('/results', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ team_id: teamId, wins, losses, updated_at: new Date().toISOString() })
   });
 }
 
@@ -190,6 +213,17 @@ async function localSavePick(userId, teamId, choice) {
   writeLocal(store);
 }
 
+async function localFetchResults() {
+  return readLocal().results || {};
+}
+
+async function localSaveResult(teamId, wins, losses) {
+  if (!TEAM_IDS.has(teamId)) throw new Error('Unknown team.');
+  const store = readLocal();
+  (store.results ||= {})[teamId] = { wins, losses };
+  writeLocal(store);
+}
+
 async function localFetchEveryone() {
   const store = readLocal();
   const counts = {};
@@ -207,12 +241,82 @@ async function localFetchEveryone() {
 }
 
 const backend = isConfigured
-  ? { signIn: restSignIn, fetchUser: restFetchUser, fetchPicks: restFetchPicks, savePick: restSavePick, fetchEveryone: restFetchEveryone }
-  : { signIn: localSignIn, fetchUser: localFetchUser, fetchPicks: localFetchPicks, savePick: localSavePick, fetchEveryone: localFetchEveryone };
+  ? {
+      signIn: restSignIn,
+      fetchUser: restFetchUser,
+      fetchPicks: restFetchPicks,
+      savePick: restSavePick,
+      fetchEveryone: restFetchEveryone,
+      fetchResults: restFetchResults,
+      saveResult: restSaveResult
+    }
+  : {
+      signIn: localSignIn,
+      fetchUser: localFetchUser,
+      fetchPicks: localFetchPicks,
+      savePick: localSavePick,
+      fetchEveryone: localFetchEveryone,
+      fetchResults: localFetchResults,
+      saveResult: localSaveResult
+    };
+
+// --- Scoring ---------------------------------------------------------------------
+// Every line is a half-win, so no pick can push: a team's result is Over or Under, and
+// it is known as soon as it is mathematically settled rather than at season's end.
+
+const GAMES = 17;
+
+// American odds -> profit on a 1 unit stake. +115 pays 1.15, -140 pays 0.71.
+function unitsWon(americanOdds) {
+  const n = Number(americanOdds);
+  if (!Number.isFinite(n) || n === 0) return 0;
+  return n > 0 ? n / 100 : 100 / Math.abs(n);
+}
+
+// 'over' | 'under' | null (not settled yet)
+function outcomeFor(team, record) {
+  if (!record) return null;
+  const wins = Number(record.wins) || 0;
+  const losses = Number(record.losses) || 0;
+  if (wins > team.line) return 'over';
+  if (GAMES - losses < team.line) return 'under';
+  return null;
+}
+
+function buildStandings(users, picksByUser, results) {
+  const settled = [];
+  for (const team of teams) {
+    const outcome = outcomeFor(team, results[team.id]);
+    if (outcome) settled.push({ team, outcome });
+  }
+
+  const rows = users.map((person) => {
+    const theirPicks = picksByUser[person.id] || {};
+    let correct = 0;
+    let wrong = 0;
+    let units = 0;
+    for (const { team, outcome } of settled) {
+      const pick = theirPicks[team.id];
+      if (!pick) continue;
+      if (pick === outcome) {
+        correct += 1;
+        units += unitsWon(pick === 'over' ? team.overOdds : team.underOdds);
+      } else {
+        wrong += 1;
+      }
+    }
+    return { name: person.name, correct, wrong, units, missing: settled.length - correct - wrong };
+  });
+
+  rows.sort((a, b) => b.correct - a.correct || b.units - a.units || a.name.localeCompare(b.name));
+  return { rows, settledCount: settled.length };
+}
 
 function showView(name) {
   for (const [key, node] of Object.entries(views)) node.hidden = key !== name;
+  el('appViews').hidden = name === 'login';
   el('who').hidden = !user;
+  el('progress').hidden = name !== 'picks';
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.classList.toggle('active', tab.dataset.view === name);
   });
@@ -380,6 +484,149 @@ async function renderEveryone() {
   container.appendChild(table);
 }
 
+async function renderStandings() {
+  const board = el('leaderboard');
+  board.innerHTML = '<p class="empty">Loading…</p>';
+  showError(el('resultsError'), '');
+
+  let everyone;
+  let results;
+  try {
+    [everyone, results] = await Promise.all([backend.fetchEveryone(), backend.fetchResults()]);
+  } catch (error) {
+    board.innerHTML = '';
+    board.append(Object.assign(document.createElement('p'), {
+      className: 'empty',
+      textContent: `Could not load standings: ${error.message}`
+    }));
+    return;
+  }
+
+  renderResultsEditor(results);
+
+  const { rows, settledCount } = buildStandings(everyone.users, everyone.picks, results);
+  if (!rows.length) {
+    board.innerHTML = '<p class="empty">Nobody has made any picks yet.</p>';
+    return;
+  }
+  if (!settledCount) {
+    board.innerHTML =
+      '<p class="empty">No team has clinched its over or under yet. Add records under "Enter results" to start scoring.</p>';
+    return;
+  }
+
+  const table = document.createElement('table');
+  const head = document.createElement('tr');
+  head.append(th('#'), th('Name', 'team-col'), th('Correct'), th('Wrong'), th('Units'));
+  const thead = document.createElement('thead');
+  thead.appendChild(head);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  rows.forEach((row, index) => {
+    // Anyone level with the person above shares their rank.
+    const tied =
+      index > 0 && rows[index - 1].correct === row.correct && rows[index - 1].units === row.units;
+    const tr = document.createElement('tr');
+    const rank = document.createElement('td');
+    rank.textContent = tied ? '' : String(index + 1);
+    const name = document.createElement('td');
+    name.className = 'team-col';
+    name.textContent = row.name;
+    const correct = document.createElement('td');
+    correct.className = 'pick-over';
+    correct.textContent = String(row.correct);
+    const wrong = document.createElement('td');
+    wrong.className = 'pick-under';
+    wrong.textContent = String(row.wrong);
+    const units = document.createElement('td');
+    units.className = 'tally';
+    units.textContent = (row.units >= 0 ? '+' : '') + row.units.toFixed(2);
+    tr.append(rank, name, correct, wrong, units);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  const caption = document.createElement('caption');
+  caption.className = 'muted';
+  caption.textContent = `${settledCount} of ${teams.length} teams settled`;
+  table.appendChild(caption);
+
+  board.innerHTML = '';
+  board.appendChild(table);
+}
+
+function renderResultsEditor(results) {
+  const list = el('resultsList');
+  list.innerHTML = '';
+
+  for (const team of teams) {
+    const record = results[team.id] || { wins: 0, losses: 0 };
+    const outcome = outcomeFor(team, record);
+
+    const row = document.createElement('div');
+    row.className = 'result-row';
+
+    const info = document.createElement('div');
+    info.className = 'team-info';
+    const text = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'team-name';
+    name.textContent = team.name;
+    const line = document.createElement('div');
+    line.className = 'team-line';
+    line.textContent = `Win total ${team.line}`;
+    text.append(name, line);
+    info.append(logoImg(team, 24), text);
+
+    const status = document.createElement('span');
+    status.className = `status ${outcome ? `pick-${outcome}` : 'pending'}`;
+    status.textContent = outcome ? `${outcome === 'over' ? 'Over' : 'Under'} hit` : 'Pending';
+
+    const fields = document.createElement('div');
+    fields.className = 'record-fields';
+    const inputs = {};
+    for (const field of ['wins', 'losses']) {
+      const label = document.createElement('label');
+      label.className = 'record-field';
+      label.append(document.createTextNode(field === 'wins' ? 'W' : 'L'));
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.max = String(GAMES);
+      input.step = field === 'wins' ? '0.5' : '1';
+      input.value = String(record[field] ?? 0);
+      inputs[field] = input;
+      label.appendChild(input);
+      fields.appendChild(label);
+    }
+
+    const commit = async () => {
+      const wins = Number(inputs.wins.value) || 0;
+      const losses = Number(inputs.losses.value) || 0;
+      showError(el('resultsError'), '');
+      if (wins < 0 || losses < 0 || wins + losses > GAMES) {
+        showError(
+          el('resultsError'),
+          `${team.name}: a record has to be between 0-0 and a total of ${GAMES} games.`
+        );
+        return;
+      }
+      try {
+        await backend.saveResult(team.id, wins, losses);
+        await renderStandings();
+      } catch (error) {
+        showError(el('resultsError'), `Could not save ${team.name}: ${error.message}`);
+      }
+    };
+    inputs.wins.addEventListener('change', commit);
+    inputs.losses.addEventListener('change', commit);
+
+    row.append(info, status, fields);
+    list.appendChild(row);
+  }
+}
+
 function th(text, className) {
   const cell = document.createElement('th');
   cell.textContent = text;
@@ -419,6 +666,7 @@ document.querySelectorAll('.tab').forEach((tab) => {
     const target = tab.dataset.view;
     showView(target);
     if (target === 'everyone') renderEveryone();
+    if (target === 'standings') renderStandings();
   });
 });
 
