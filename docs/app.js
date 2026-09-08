@@ -1,6 +1,6 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=7';
-import { playPixelBurst } from './pixel-fx.js?v=7';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=7';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=8';
+import { playPixelBurst } from './pixel-fx.js?v=8';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=8';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
@@ -426,11 +426,17 @@ function renderPicks() {
     section.appendChild(heading);
 
     for (const team of divisionTeams) {
+      // A team you can't take right now — you're at the limit, or picks have closed —
+      // loses its colour entirely rather than just fading.
+      const inactive = !picks[team.id] && (atLimit || locked);
+
       const row = document.createElement('div');
-      row.className = 'team';
+      row.className = inactive ? 'team inactive' : 'team';
       row.dataset.team = team.id;
-      row.style.backgroundImage = teamWash(team);
-      row.style.borderColor = teamBorder(team);
+      if (!inactive) {
+        row.style.backgroundImage = teamWash(team);
+        row.style.borderColor = teamBorder(team);
+      }
 
       const info = document.createElement('div');
       info.className = 'team-info';

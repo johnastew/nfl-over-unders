@@ -337,12 +337,29 @@ caption {
   z-index: 1;
 }
 
+/* A card you can't act on — all your picks are spent, or the deadline has passed — goes
+   fully grey: no team wash, no team border, desaturated logo and badges. Your own picks
+   keep their colour so they stand out against the rest. app.js skips the inline wash and
+   border for these, so there is nothing here to override. */
+.team.inactive {
+  background-color: #f6f7f9;
+  border-color: var(--line);
+}
+.team.inactive .logo {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+.team.inactive .team-name { color: #8b93a1; }
+.team.inactive .team-line { color: #a6adb9; }
+.team.inactive .choice { background: #f6f7f9; }
+.team.inactive .choice-badge { filter: grayscale(1); }
+
 /* Greyed out: either you have used all your picks, or the deadline has passed. Your own
    picks stay legible in both cases; it is the unavailable options that recede. */
 .choice:disabled { cursor: default; }
 .choice:disabled:hover { border-color: var(--line); }
 .choice[aria-pressed="false"]:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   background: #fafbfc;
 }
 .choice[aria-pressed="true"]:disabled .choice-badge { opacity: 1; }
