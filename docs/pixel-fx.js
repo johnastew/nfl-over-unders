@@ -3,10 +3,10 @@
 
 const GAP = 5;
 const SIZE = 6;
-const STAGGER = 350; // ms window the pixels start within
-const GROW = 120; // ms for one pixel to reach full size
-const HOLD = 160; // ms at full size before fading
-const FADE = 220; // ms to fade out
+const STAGGER = 200; // ms window the pixels start within
+const GROW = 80; // ms for one pixel to reach full size
+const HOLD = 90; // ms at full size before fading
+const FADE = 140; // ms to fade out
 
 // Every card keeps at most one burst, so a fast double tap doesn't stack loops.
 const running = new WeakMap();
@@ -15,17 +15,19 @@ function reducedMotion() {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
-// Three tints of the team's colour, mixed toward white so the burst reads as that team
-// rather than a flat block.
+// Each of the team's colours at full strength and mixed toward white, so a two-colour
+// team scatters both through the burst.
 function tints(hex) {
   const clean = hex.replace('#', '');
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(clean.slice(i, i + 2), 16));
   const mix = (amount) =>
     `rgb(${Math.round(r + (255 - r) * amount)}, ${Math.round(g + (255 - g) * amount)}, ${Math.round(b + (255 - b) * amount)})`;
-  return [mix(0), mix(0.35), mix(0.65)];
+  return [mix(0), mix(0.4)];
 }
 
-export function playPixelBurst(card, hex) {
+// colors: one or two team colours; a single colour gets a third, lighter shade so the
+// burst still has some variety.
+export function playPixelBurst(card, colors) {
   if (!card || reducedMotion()) return;
 
   const previous = running.get(card);
@@ -51,7 +53,9 @@ export function playPixelBurst(card, hex) {
   ctx.scale(ratio, ratio);
   card.appendChild(canvas);
 
-  const palette = tints(hex);
+  const list = (Array.isArray(colors) ? colors : [colors]).filter(Boolean);
+  const palette = list.flatMap(tints);
+  if (list.length === 1) palette.push(tints(list[0])[1]);
   const step = SIZE + GAP;
   const pixels = [];
   for (let x = 0; x < width; x += step) {

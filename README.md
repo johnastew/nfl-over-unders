@@ -136,6 +136,11 @@ which some browsers interpolate through grey.
 
 ## Logos
 
+Tapping a pick plays a pixel burst across the card, behind the text and buttons, using the
+team's primary and secondary colours (`TEAM_COLORS` and `TEAM_SECONDARY` in
+`docs/teams.js`). The Jets are green and white, so they have no secondary listed and fall
+back to shades of the green — white squares on a white card would be invisible.
+
 Team logos are loaded from ESPN's CDN (`a.espncdn.com/i/teamlogos/nfl/500/<slug>.png`),
 derived from the team ids in `docs/teams.js` — no image files are stored in this repo.
 ESPN's slug is the lowercase team id for every team except Washington, which they call

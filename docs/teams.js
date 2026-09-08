@@ -60,3 +60,21 @@ const TEAM_COLORS = {
 export function teamColor(teamId) {
   return TEAM_COLORS[teamId] || '#14171f';
 }
+
+// Second brand colour, where the team has one that actually shows against a white card.
+// The Jets are green and white, so they are left out and fall back to shades of the
+// primary rather than painting white squares onto white.
+const TEAM_SECONDARY = {
+  ARI: '#FFB612', ATL: '#101820', BAL: '#9E7C0C', BUF: '#C60C30',
+  CAR: '#101820', CHI: '#C83803', CIN: '#101820', CLE: '#FF3C00',
+  DAL: '#869397', DEN: '#002244', DET: '#B0B7BC', GB:  '#FFB612',
+  HOU: '#A71930', IND: '#A2AAAD', JAX: '#D7A22A', KC:  '#FFB81C',
+  LV:  '#A5ACAF', LAC: '#FFC20E', LAR: '#FFA300', MIA: '#FC4C02',
+  MIN: '#FFC62F', NE:  '#C60C30', NO:  '#101820', NYG: '#A71930',
+  PHI: '#A5ACAF', PIT: '#101820', SF:  '#B3995D', SEA: '#69BE28',
+  TB:  '#B1BABF', TEN: '#4B92DB', WAS: '#FFB612'
+};
+
+export function teamSecondaryColor(teamId) {
+  return TEAM_SECONDARY[teamId] || null;
+}

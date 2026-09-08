@@ -314,11 +314,20 @@ caption {
 .lock-notice { margin: 0 2px 6px; }
 .pick-hint { margin: 0 2px 14px; }
 
-/* The pixel burst canvas, laid over a card for the length of the animation. */
+/* The pixel burst canvas sits behind the card's content for the length of the animation.
+   Positioned elements paint after the normal-flow inline content, so the team name and the
+   buttons have to be positioned too or the canvas would cover them. */
 .pixel-fx {
   position: absolute;
   inset: 0;
+  z-index: 0;
   pointer-events: none;
+}
+
+.team-info,
+.team .choices {
+  position: relative;
+  z-index: 1;
 }
 
 .choice:disabled { cursor: default; }

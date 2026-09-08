@@ -1,6 +1,6 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js?v=5';
-import { playPixelBurst } from './pixel-fx.js?v=5';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=5';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=6';
+import { playPixelBurst } from './pixel-fx.js?v=6';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=6';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
@@ -570,7 +570,7 @@ function pickCount() {
 function burst(teamId) {
   const card = document.querySelector(`.team[data-team="${teamId}"]`);
   const team = teams.find((t) => t.id === teamId);
-  if (card && team) playPixelBurst(card, teamColor(team.id));
+  if (card && team) playPixelBurst(card, [teamColor(team.id), teamSecondaryColor(team.id)]);
 }
 
 async function renderEveryone() {
