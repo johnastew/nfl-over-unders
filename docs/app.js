@@ -4,6 +4,26 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js';
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
 
+// Picks lock at kickoff of the Wednesday opener: 8:20 PM ET on Sept 9, 2026.
+// September is EDT (UTC-4), hence 00:20Z on the 10th.
+// This constant only drives the UI. The lock that actually matters is the row level
+// security policy in supabase-schema.sql, which refuses writes past this moment even
+// if someone calls the API directly.
+const PICKS_LOCK_AT = Date.parse('2026-09-10T00:20:00Z');
+
+const picksLocked = () => Date.now() >= PICKS_LOCK_AT;
+
+function lockLabel() {
+  return new Date(PICKS_LOCK_AT).toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
 const el = (id) => document.getElementById(id);
 const views = {
   login: el('loginView'),
@@ -117,6 +137,19 @@ async function restFetchPicks(userId) {
 async function restSavePick(userId, teamId, choice) {
   if (!TEAM_IDS.has(teamId)) throw new Error('Unknown team.');
   if (choice !== 'over' && choice !== 'under') throw new Error('Pick must be over or under.');
+  try {
+    await savePickRequest(userId, teamId, choice);
+  } catch (error) {
+    // The deadline is enforced by a row level security policy, so a late write comes
+    // back as a policy violation rather than anything about time.
+    if (error.status === 403 || /row-level security/i.test(error.message)) {
+      throw new Error('Picks are locked — the season has started.');
+    }
+    throw error;
+  }
+}
+
+async function savePickRequest(userId, teamId, choice) {
   await rest('/picks', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
@@ -332,6 +365,10 @@ function odds(value) {
 }
 
 function renderPicks() {
+  const locked = picksLocked();
+  el('lockBanner').hidden = !locked;
+  el('lockNotice').hidden = locked;
+  if (!locked) el('lockNotice').textContent = `Picks lock at kickoff — ${lockLabel()} ET.`;
   el('whoName').textContent = `Signed in as ${user.name}`;
   const picked = teams.filter((team) => picks[team.id]).length;
   el('progress').textContent = `${picked} / ${teams.length} picked`;
@@ -371,6 +408,7 @@ function renderPicks() {
         button.className = 'choice';
         button.dataset.choice = choice;
         button.setAttribute('aria-pressed', String(picks[team.id] === choice));
+        button.disabled = locked;
         const label = choice === 'over' ? 'Over' : 'Under';
         button.innerHTML = `${label} ${team.line}<small>${odds(choice === 'over' ? team.overOdds : team.underOdds).trim()}</small>`;
         button.addEventListener('click', () => selectPick(team.id, choice));
@@ -408,6 +446,7 @@ function groupByDivision(list) {
 }
 
 async function selectPick(teamId, choice) {
+  if (picksLocked()) return;
   const previous = picks[teamId];
   if (previous === choice) return;
   picks[teamId] = choice;

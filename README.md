@@ -57,6 +57,26 @@ normal for this kind of app, but it means **anyone with the link can view or cha
 anyone's picks.** That's fine for a group of friends playing for bragging rights. Don't
 put anything sensitive in it.
 
+## The pick deadline
+
+Picks lock at kickoff of the Wednesday opener — **8:20 PM ET on Sept 9, 2026**. After
+that the buttons are disabled and a banner says so; everyone can still see all picks and
+the standings.
+
+The lock is enforced in **two** places, and only the second one really counts:
+
+1. `PICKS_LOCK_AT` in `docs/app.js` disables the UI. That is a courtesy — anyone could
+   bypass it with the browser console.
+2. The row level security policies on `picks` in `supabase-schema.sql` refuse any insert
+   or update past that timestamp. This is the actual lock: a late write fails at the
+   database, however it is sent.
+
+To move the deadline, edit the timestamp in **both** places (the two `picks` write
+policies and `PICKS_LOCK_AT`), re-run `supabase-schema.sql`, and push. Note the app's
+timestamps are UTC: 8:20 PM ET in September is `00:20Z` the next day.
+
+Entering results is deliberately **not** locked — that has to keep working all season.
+
 ## Scoring
 
 The **Standings** tab ranks everyone by **correct picks**, with **units** as the

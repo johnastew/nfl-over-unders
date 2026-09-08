@@ -44,8 +44,17 @@ drop policy if exists "anon update results" on results;
 create policy "anon read users" on users for select to anon using (true);
 create policy "anon insert users" on users for insert to anon with check (true);
 create policy "anon read picks" on picks for select to anon using (true);
-create policy "anon insert picks" on picks for insert to anon with check (true);
-create policy "anon update picks" on picks for update to anon using (true) with check (true);
+-- Picks lock at kickoff of the Wednesday opener: 8:20 PM ET on Sept 9, 2026 (00:20 UTC
+-- on the 10th, since September is EDT). Reads stay open forever; writes stop dead at
+-- that moment. This is the real lock -- the app's disabled buttons are only a courtesy,
+-- and someone calling the API directly still hits this.
+-- To change the deadline, edit the timestamp in both policies below, re-run this file,
+-- and update PICKS_LOCK_AT in docs/app.js to match.
+create policy "anon insert picks" on picks for insert to anon
+  with check (now() < timestamptz '2026-09-10T00:20:00Z');
+create policy "anon update picks" on picks for update to anon
+  using (now() < timestamptz '2026-09-10T00:20:00Z')
+  with check (now() < timestamptz '2026-09-10T00:20:00Z');
 create policy "anon read results" on results for select to anon using (true);
 create policy "anon insert results" on results for insert to anon with check (true);
 create policy "anon update results" on results for update to anon using (true) with check (true);

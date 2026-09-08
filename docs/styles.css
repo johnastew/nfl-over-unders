@@ -284,3 +284,11 @@ caption {
   .status { order: 3; }
   .record-fields { margin-left: auto; }
 }
+
+.banner-locked { background: #eef1f5; border-color: #ccd3dc; color: #38414f; }
+
+.lock-notice { margin: 0 2px 14px; }
+
+.choice:disabled { cursor: default; opacity: 0.85; }
+.choice:disabled:hover { border-color: var(--line); }
+.choice[aria-pressed="true"]:disabled { opacity: 1; }
