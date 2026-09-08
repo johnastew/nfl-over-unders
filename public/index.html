@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NFL Win Totals Over/Under</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🏈</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>2026 NFL Win Totals</h1>
+    <div class="who" id="who" hidden>
+      <span id="whoName"></span>
+      <button type="button" class="linkish" id="switchUser">Switch user</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="loginView" class="view card" hidden>
+      <h2>Who are you?</h2>
+      <p class="muted">Just type your name &mdash; no password. Use the same name each time to find your picks.</p>
+      <form id="loginForm">
+        <input id="nameInput" type="text" maxlength="40" placeholder="Your name" autocomplete="name" required>
+        <button type="submit">Start picking</button>
+      </form>
+      <p class="error" id="loginError" hidden></p>
+    </section>
+
+    <section id="picksView" class="view" hidden>
+      <div class="toolbar">
+        <nav class="tabs">
+          <button type="button" class="tab active" data-view="picks">My picks</button>
+          <button type="button" class="tab" data-view="everyone">Everyone</button>
+        </nav>
+        <span class="progress" id="progress"></span>
+      </div>
+      <p class="error" id="picksError" hidden></p>
+      <div id="teamList"></div>
+    </section>
+
+    <section id="everyoneView" class="view" hidden>
+      <div class="toolbar">
+        <nav class="tabs">
+          <button type="button" class="tab" data-view="picks">My picks</button>
+          <button type="button" class="tab active" data-view="everyone">Everyone</button>
+        </nav>
+      </div>
+      <div class="table-scroll" id="everyoneTable"></div>
+    </section>
+  </main>
+
+  <footer class="muted">Lines from DraftKings as of Sept. 3, 2026, via CBS Sports. For friendly bragging rights only.</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
