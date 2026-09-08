@@ -1,4 +1,8 @@
+import { TEAMS, TEAM_IDS } from './teams.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js';
+
 const STORAGE_KEY = 'nflou.user';
+const MAX_NAME_LENGTH = 40;
 
 const el = (id) => document.getElementById(id);
 const views = {
@@ -31,11 +35,102 @@ function storeUser(value) {
   }
 }
 
-async function api(path, options) {
-  const res = await fetch(path, options);
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || 'Something went wrong.');
-  return body;
+// --- Supabase (PostgREST) access ------------------------------------------------
+// Supabase's REST API is plain HTTP, so this talks to it with fetch rather than pulling
+// in the JS SDK: one fewer dependency, and nothing to load from a CDN.
+
+const REST = `${SUPABASE_URL}/rest/v1`;
+
+async function rest(path, options = {}) {
+  const res = await fetch(`${REST}${path}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const error = new Error(body.message || `Request failed (${res.status}).`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.status === 204 ? null : res.json().catch(() => null);
+}
+
+async function signIn(rawName) {
+  const name = rawName.trim().replace(/\s+/g, ' ');
+  if (!name) throw new Error('Please enter a name.');
+  if (name.length > MAX_NAME_LENGTH) {
+    throw new Error(`Name must be ${MAX_NAME_LENGTH} characters or fewer.`);
+  }
+  const nameKey = name.toLowerCase();
+  const query = `/users?select=id,name&name_key=eq.${encodeURIComponent(nameKey)}`;
+
+  const [existing] = (await rest(query)) || [];
+  if (existing) return existing;
+
+  try {
+    const [created] = await rest('/users', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ name, name_key: nameKey })
+    });
+    return created;
+  } catch (error) {
+    // Someone signed in with the same name at the same moment and the unique index on
+    // name_key won the race — read back the row they created.
+    if (error.status !== 409) throw error;
+    const [raced] = (await rest(query)) || [];
+    if (raced) return raced;
+    throw error;
+  }
+}
+
+async function fetchUser(userId) {
+  const [found] = (await rest(`/users?select=id,name&id=eq.${encodeURIComponent(userId)}`)) || [];
+  return found || null;
+}
+
+async function fetchPicks(userId) {
+  const rows =
+    (await rest(`/picks?select=team_id,choice&user_id=eq.${encodeURIComponent(userId)}`)) || [];
+  const result = {};
+  for (const row of rows) result[row.team_id] = row.choice;
+  return result;
+}
+
+async function savePick(userId, teamId, choice) {
+  if (!TEAM_IDS.has(teamId)) throw new Error('Unknown team.');
+  if (choice !== 'over' && choice !== 'under') throw new Error('Pick must be over or under.');
+  await rest('/picks', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
+      user_id: userId,
+      team_id: teamId,
+      choice,
+      updated_at: new Date().toISOString()
+    })
+  });
+}
+
+async function fetchEveryone() {
+  const [users, rows] = await Promise.all([
+    rest('/users?select=id,name&order=created_at.asc,id.asc'),
+    rest('/picks?select=user_id,team_id,choice')
+  ]);
+
+  const picksByUser = {};
+  const counts = {};
+  for (const team of teams) counts[team.id] = { over: 0, under: 0 };
+  for (const row of rows || []) {
+    (picksByUser[row.user_id] ||= {})[row.team_id] = row.choice;
+    if (counts[row.team_id]) counts[row.team_id][row.choice] += 1;
+  }
+  return { users: users || [], picks: picksByUser, counts };
 }
 
 function showView(name) {
@@ -122,11 +217,7 @@ async function selectPick(teamId, choice) {
   renderPicks();
   showError(el('picksError'), '');
   try {
-    await api('/api/picks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, teamId, choice })
-    });
+    await savePick(user.id, teamId, choice);
   } catch (error) {
     if (previous) picks[teamId] = previous;
     else delete picks[teamId];
@@ -140,7 +231,7 @@ async function renderEveryone() {
   container.innerHTML = '<p class="empty">Loading…</p>';
   let data;
   try {
-    data = await api('/api/everyone');
+    data = await fetchEveryone();
   } catch (error) {
     container.innerHTML = '';
     container.appendChild(Object.assign(document.createElement('p'), {
@@ -204,7 +295,7 @@ function th(text, className) {
 async function enterApp(nextUser) {
   user = nextUser;
   storeUser(user);
-  picks = await api(`/api/picks/${user.id}`);
+  picks = await fetchPicks(user.id);
   renderPicks();
   showView('picks');
 }
@@ -212,13 +303,9 @@ async function enterApp(nextUser) {
 el('loginForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   showError(el('loginError'), '');
-  const name = el('nameInput').value.trim();
+  const name = el('nameInput').value;
   try {
-    await enterApp(await api('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    }));
+    await enterApp(await signIn(name));
   } catch (error) {
     showError(el('loginError'), error.message);
   }
@@ -241,12 +328,24 @@ document.querySelectorAll('.tab').forEach((tab) => {
 });
 
 (async function init() {
-  teams = await api('/api/teams');
+  teams = TEAMS;
+  if (!isConfigured) {
+    showView('login');
+    showError(
+      el('loginError'),
+      'This site has not been connected to a database yet. Fill in docs/config.js with your Supabase project URL and anon key (see the README).'
+    );
+    el('loginForm').querySelector('button').disabled = true;
+    return;
+  }
   const stored = loadStoredUser();
   if (!stored) return showView('login');
   try {
-    picks = await api(`/api/picks/${stored.id}`);
-    user = stored;
+    // Confirm the remembered account still exists (the table may have been reset).
+    const confirmed = await fetchUser(stored.id);
+    if (!confirmed) throw new Error('Unknown user.');
+    picks = await fetchPicks(confirmed.id);
+    user = confirmed;
     renderPicks();
     showView('picks');
   } catch {

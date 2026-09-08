@@ -1,6 +1,6 @@
 // 2026 NFL win totals. Lines and odds from DraftKings as of Sept. 3, 2026,
 // as published by CBS Sports. Odds are display-only.
-const TEAMS = [
+export const TEAMS = [
   { id: 'ARI', name: 'Arizona Cardinals',     conference: 'NFC', division: 'West',  line: 3.5,  overOdds: '-136', underOdds: '+115' },
   { id: 'ATL', name: 'Atlanta Falcons',       conference: 'NFC', division: 'South', line: 7.5,  overOdds: '+120', underOdds: '-140' },
   { id: 'BAL', name: 'Baltimore Ravens',      conference: 'AFC', division: 'North', line: 11.5, overOdds: '+115', underOdds: '-140' },
@@ -35,6 +35,4 @@ const TEAMS = [
   { id: 'WAS', name: 'Washington Commanders', conference: 'NFC', division: 'East',  line: 7.5,  overOdds: '+105', underOdds: '-125' }
 ];
 
-const TEAM_IDS = new Set(TEAMS.map((t) => t.id));
-
-module.exports = { TEAMS, TEAM_IDS };
+export const TEAM_IDS = new Set(TEAMS.map((t) => t.id));
