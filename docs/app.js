@@ -1,6 +1,6 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=10';
-import { playPixelBurst } from './pixel-fx.js?v=10';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=10';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=11';
+import { playPixelBurst } from './pixel-fx.js?v=11';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=11';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
@@ -454,7 +454,16 @@ function renderPicks() {
   const container = el('teamList');
   container.innerHTML = '';
 
-  for (const [division, divisionTeams] of groupByDivision(teams)) {
+  // Once picks are locked the teams you passed on are just noise, so the page becomes
+  // your six.
+  const visible = locked ? teams.filter((team) => picks[team.id]) : teams;
+  if (locked && !visible.length) {
+    container.innerHTML =
+      '<p class="empty">Picks closed before you got any in. The Everyone and Standings tabs still work.</p>';
+    return;
+  }
+
+  for (const [division, divisionTeams] of groupByDivision(visible)) {
     const section = document.createElement('div');
     section.className = 'division';
     const heading = document.createElement('p');
@@ -619,9 +628,11 @@ function burst(teamId) {
 async function renderEveryone() {
   const container = el('everyoneTable');
   container.innerHTML = '<p class="empty">Loading…</p>';
+
   let data;
+  let results;
   try {
-    data = await backend.fetchEveryone();
+    [data, results] = await Promise.all([backend.fetchEveryone(), backend.fetchResults()]);
   } catch (error) {
     container.innerHTML = '';
     container.appendChild(Object.assign(document.createElement('p'), {
@@ -636,45 +647,96 @@ async function renderEveryone() {
     return;
   }
 
+  container.innerHTML = '';
+  for (const person of data.users) {
+    container.appendChild(personCard(person, data.picks[person.id] || {}, results));
+  }
+}
+
+// One person's six picks and how each is doing.
+function personCard(person, theirPicks, results) {
+  const card = document.createElement('article');
+  card.className = 'person';
+
+  const head = document.createElement('header');
+  head.className = 'person-head';
+  const name = document.createElement('h3');
+  name.textContent = person.name;
+  const summary = document.createElement('span');
+  summary.className = 'person-summary';
+  head.append(name, summary);
+  card.appendChild(head);
+
+  const picked = teams.filter((team) => theirPicks[team.id]);
+  if (!picked.length) {
+    summary.textContent = 'No picks';
+    card.appendChild(Object.assign(document.createElement('p'), {
+      className: 'empty',
+      textContent: 'Never got any picks in.'
+    }));
+    return card;
+  }
+
   const table = document.createElement('table');
   const thead = document.createElement('thead');
   const headRow = document.createElement('tr');
-  headRow.appendChild(th('Team', 'team-col'));
-  for (const person of data.users) headRow.appendChild(th(person.name));
-  headRow.appendChild(th('O / U'));
+  headRow.append(th('Team', 'team-col'), th('Pick'), th('Record', 'record-col'), th('Result'));
   thead.appendChild(headRow);
   table.appendChild(thead);
 
   const tbody = document.createElement('tbody');
-  for (const team of teams) {
+  let correct = 0;
+  let wrong = 0;
+  let pending = 0;
+
+  for (const team of picked) {
+    const choice = theirPicks[team.id];
+    const record = results[team.id];
+    const outcome = outcomeFor(team, record);
+
     const row = document.createElement('tr');
+
     const teamCell = document.createElement('td');
     teamCell.className = 'team-col';
-    const teamLabel = document.createElement('span');
-    teamLabel.textContent = `${team.name} ${team.line}`;
-    teamCell.append(logoImg(team, 20), teamLabel);
-    row.appendChild(teamCell);
+    const label = document.createElement('span');
+    label.textContent = `${team.name} ${team.line}`;
+    teamCell.append(logoImg(team, 20), label);
 
-    for (const person of data.users) {
-      const choice = data.picks[person.id]?.[team.id];
-      const cell = document.createElement('td');
-      cell.className = choice ? `pick-${choice}` : 'pick-none';
-      cell.textContent = choice === 'over' ? 'O' : choice === 'under' ? 'U' : '–';
-      row.appendChild(cell);
+    const pickCell = document.createElement('td');
+    pickCell.className = `pick-${choice}`;
+    pickCell.textContent = `${choice === 'over' ? 'Over' : 'Under'} ${team.line}`;
+
+    const recordCell = document.createElement('td');
+    recordCell.className = 'tally record-col';
+    recordCell.textContent = record ? `${record.wins}-${record.losses}` : '—';
+
+    const resultCell = document.createElement('td');
+    if (!outcome) {
+      pending += 1;
+      resultCell.className = 'pick-none';
+      resultCell.textContent = 'Pending';
+    } else if (outcome === choice) {
+      correct += 1;
+      resultCell.className = 'pick-over';
+      resultCell.textContent = `✓ ${outcome === 'over' ? 'Over' : 'Under'} hit`;
+    } else {
+      wrong += 1;
+      resultCell.className = 'pick-under';
+      resultCell.textContent = `✗ ${outcome === 'over' ? 'Over' : 'Under'} hit`;
     }
 
-    const count = data.counts[team.id] || { over: 0, under: 0 };
-    const tally = document.createElement('td');
-    tally.className = 'tally';
-    tally.textContent = `${count.over} / ${count.under}`;
-    row.appendChild(tally);
-
+    row.append(teamCell, pickCell, recordCell, resultCell);
     tbody.appendChild(row);
   }
   table.appendChild(tbody);
 
-  container.innerHTML = '';
-  container.appendChild(table);
+  summary.textContent = `${correct} correct · ${wrong} wrong · ${pending} pending`;
+
+  const scroll = document.createElement('div');
+  scroll.className = 'table-scroll';
+  scroll.appendChild(table);
+  card.appendChild(scroll);
+  return card;
 }
 
 async function renderStandings() {

@@ -385,3 +385,35 @@ caption {
   font-size: 13px;
 }
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+/* Everyone tab: a card per person, listing their own picks. */
+.person {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.person-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.person-head h3 { font-size: 16px; margin: 0; }
+.person-summary { font-size: 13px; color: var(--muted); }
+
+.person .table-scroll { border: none; border-radius: 0; }
+.person table { font-size: 13px; }
+.person td, .person th { text-align: left; }
+.person tbody tr:last-child td { border-bottom: none; }
+
+/* On a phone the Result column matters more than the raw record, and all four will not
+   fit without scrolling the most important one out of view. */
+@media (max-width: 520px) {
+  .person .record-col { display: none; }
+}
