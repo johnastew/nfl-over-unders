@@ -137,13 +137,21 @@ input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px
 .team-name { font-weight: 600; font-size: 15px; }
 .team-line { font-size: 12px; color: var(--muted); }
 
-.choices { display: flex; gap: 6px; flex: 0 0 auto; }
+/* A fixed two-column track so every button is the same width, and the columns line up
+   from card to card regardless of how long "Under 10.5" is against "Over 3.5". */
+.choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  width: 300px;
+  flex: 0 0 auto;
+}
 
 .choice {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 124px;
+  min-width: 0;
   padding: 9px 12px;
   font-size: 14px;
   line-height: 1.25;
@@ -224,7 +232,6 @@ td.tally { color: var(--muted); font-size: 13px; }
 @media (max-width: 520px) {
   .team { flex-wrap: wrap; }
   .choices { width: 100%; }
-  .choice { flex: 1; min-width: 0; }
 }
 
 .banner {
@@ -330,9 +337,14 @@ caption {
   z-index: 1;
 }
 
+/* Greyed out: either you have used all your picks, or the deadline has passed. Your own
+   picks stay legible in both cases; it is the unavailable options that recede. */
 .choice:disabled { cursor: default; }
 .choice:disabled:hover { border-color: var(--line); }
-.choice:disabled .choice-badge { opacity: 0.15; }
+.choice[aria-pressed="false"]:disabled {
+  opacity: 0.4;
+  background: #fafbfc;
+}
 .choice[aria-pressed="true"]:disabled .choice-badge { opacity: 1; }
 
 #returningBlock { margin-top: 14px; }

@@ -1,6 +1,6 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=6';
-import { playPixelBurst } from './pixel-fx.js?v=6';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=6';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=7';
+import { playPixelBurst } from './pixel-fx.js?v=7';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=7';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
