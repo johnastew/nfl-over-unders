@@ -1,5 +1,5 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js?v=2';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=2';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js?v=3';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=3';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
@@ -421,8 +421,15 @@ function renderPicks() {
         button.dataset.choice = choice;
         button.setAttribute('aria-pressed', String(picks[team.id] === choice));
         button.disabled = locked;
-        const label = choice === 'over' ? 'Over' : 'Under';
-        button.innerHTML = `${label} ${team.line}<small>${odds(choice === 'over' ? team.overOdds : team.underOdds).trim()}</small>`;
+        const badge = document.createElement('span');
+        badge.className = 'choice-badge';
+        badge.innerHTML = arrowSvg(choice);
+
+        const label = document.createElement('span');
+        label.className = 'choice-label';
+        label.innerHTML = `${choice === 'over' ? 'Over' : 'Under'} ${team.line}<small>${odds(choice === 'over' ? team.overOdds : team.underOdds).trim()}</small>`;
+
+        button.append(badge, label);
         button.addEventListener('click', () => selectPick(team.id, choice));
         choices.appendChild(button);
       }
@@ -449,7 +456,12 @@ function teamWash(team) {
 
 function teamBorder(team) {
   const [r, g, b] = teamRgb(team);
-  return `rgba(${r}, ${g}, ${b}, 0.5)`;
+  return `rgba(${r}, ${g}, ${b}, 0.25)`;
+}
+
+function arrowSvg(choice) {
+  const path = choice === 'over' ? 'M12 19V6M6 12l6-6 6 6' : 'M12 5v13M6 12l6 6 6-6';
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
 }
 
 function logoImg(team, size) {

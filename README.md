@@ -109,8 +109,12 @@ Each pick card carries a left-to-right wash of that team's primary color at 12% 
 fading out at 65% across the card, over the card's white background. The colors live in
 `TEAM_COLORS` in `docs/teams.js`; the gradient is built in `teamWash()` in `docs/app.js`.
 
-Each card's border is the same color at 50% alpha, which is what gives the dark-primary
-teams (Patriots, Cowboys, Raiders) definition the wash alone can't.
+Each card's border is the same color at 25% alpha.
+
+The Over/Under buttons keep a neutral border and white fill in every state; the pick is
+shown by the arrow badge going green (up) or red (down). Those arrows are inline SVG
+redrawn from Material Symbols Rounded `arrow_upward` / `arrow_downward`, so the page
+loads no icon font.
 
 The fade ends at the same color with zero alpha rather than the `transparent` keyword,
 which some browsers interpolate through grey.
