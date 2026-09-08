@@ -1,5 +1,5 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js?v=3';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=3';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor } from './teams.js?v=4';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=4';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
@@ -419,8 +419,10 @@ function renderPicks() {
         button.type = 'button';
         button.className = 'choice';
         button.dataset.choice = choice;
-        button.setAttribute('aria-pressed', String(picks[team.id] === choice));
+        const isPick = picks[team.id] === choice;
+        button.setAttribute('aria-pressed', String(isPick));
         button.disabled = locked;
+        if (isPick) button.style.borderColor = teamBorderSolid(team);
         const badge = document.createElement('span');
         badge.className = 'choice-badge';
         badge.innerHTML = arrowSvg(choice);
@@ -456,12 +458,18 @@ function teamWash(team) {
 
 function teamBorder(team) {
   const [r, g, b] = teamRgb(team);
-  return `rgba(${r}, ${g}, ${b}, 0.25)`;
+  return `rgba(${r}, ${g}, ${b}, 0.5)`;
 }
 
 function arrowSvg(choice) {
   const path = choice === 'over' ? 'M12 19V6M6 12l6-6 6 6' : 'M12 5v13M6 12l6 6 6-6';
   return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
+}
+
+// The picked button's border: the team's color at full strength.
+function teamBorderSolid(team) {
+  const [r, g, b] = teamRgb(team);
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 function logoImg(team, size) {

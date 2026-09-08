@@ -140,42 +140,41 @@ input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px
 .choice {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 108px;
-  padding: 7px 10px;
-  font-size: 13px;
-  line-height: 1.2;
+  gap: 10px;
+  min-width: 124px;
+  padding: 9px 12px;
+  font-size: 14px;
+  line-height: 1.25;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
   color: var(--ink);
   cursor: pointer;
   text-align: left;
 }
-.choice small { display: block; color: var(--muted); font-size: 11px; }
+.choice small { display: block; color: var(--muted); font-size: 12px; }
 .choice:hover { border-color: #c3c8d0; }
 
-/* The arrow badge carries the state; the button's border and fill stay put. */
+/* The arrow circle is always green (over) or red (under). What separates the pick from
+   the rest is strength: an unpicked button is dimmed and keeps the neutral border, while
+   the picked one is full colour and takes the team's border inline from app.js. */
 .choice-badge {
   flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #e7e9ee;
-  color: #9aa2b1;
+  color: #fff;
 }
-.choice-badge svg { width: 13px; height: 13px; display: block; }
+.choice[data-choice="over"] .choice-badge { background: var(--over); }
+.choice[data-choice="under"] .choice-badge { background: var(--under); }
+.choice-badge svg { width: 17px; height: 17px; display: block; }
 .choice-label { flex: 1 1 auto; }
 
+.choice[aria-pressed="false"] .choice-badge { opacity: 0.3; }
+.choice[aria-pressed="false"] .choice-label { color: var(--muted); }
 .choice[aria-pressed="true"] { font-weight: 600; }
-.choice[aria-pressed="true"][data-choice="over"] .choice-badge {
-  background: var(--over); color: #fff;
-}
-.choice[aria-pressed="true"][data-choice="under"] .choice-badge {
-  background: var(--under); color: #fff;
-}
 
 .error {
   background: var(--under-bg);
