@@ -86,3 +86,30 @@ $$ language plpgsql;
 drop trigger if exists picks_limit on picks;
 create trigger picks_limit before insert on picks
   for each row execute function enforce_pick_limit();
+
+-- Each pick can carry a blurb explaining the reasoning behind it. These are what the
+-- article page (docs/article.html) is written from.
+--
+-- Deliberately a separate table rather than a column on picks, because notes are NOT
+-- locked at kickoff the way picks are: the picks themselves are the bet and have to
+-- freeze, but people write and rewrite the reasoning around them all season, and the
+-- policies on picks would otherwise refuse those writes.
+create table if not exists notes (
+  user_id bigint not null references users (id) on delete cascade,
+  team_id text not null,
+  body text not null check (char_length(body) <= 1200),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, team_id)
+);
+
+alter table notes enable row level security;
+
+drop policy if exists "anon read notes" on notes;
+drop policy if exists "anon insert notes" on notes;
+drop policy if exists "anon update notes" on notes;
+drop policy if exists "anon delete notes" on notes;
+
+create policy "anon read notes" on notes for select to anon using (true);
+create policy "anon insert notes" on notes for insert to anon with check (true);
+create policy "anon update notes" on notes for update to anon using (true) with check (true);
+create policy "anon delete notes" on notes for delete to anon using (true);

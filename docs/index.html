@@ -48,7 +48,11 @@
           <button type="button" class="tab" data-view="everyone">Everyone</button>
           <button type="button" class="tab" data-view="standings">Standings</button>
         </nav>
-        <span class="progress" id="progress"></span>
+        <span class="toolbar-end">
+          <span class="progress" id="progress"></span>
+          <!-- The article is its own page, opened in a new tab so nobody loses their picks. -->
+          <a class="article-link" href="article.html?v=12" target="_blank" rel="noopener">Read the article &rarr;</a>
+        </span>
       </div>
 
       <p class="banner banner-locked" id="lockBanner" hidden>
@@ -57,6 +61,10 @@
       </p>
       <p class="muted lock-notice" id="lockNotice" hidden></p>
       <p class="muted pick-hint" id="pickHint" hidden></p>
+      <p class="muted pick-hint" id="noteHint" hidden>
+        Your picks are set, but the blurbs never lock &mdash; write or rewrite the reasoning
+        under any of your six and it turns up in the article.
+      </p>
 
       <p class="error" id="picksError" hidden></p>
 
@@ -95,6 +103,6 @@
 
   <!-- ?v= busts the browser cache; bump it in this tag and in app.js's two
        imports whenever you deploy a change. See the README. -->
-  <script type="module" src="app.js?v=11"></script>
+  <script type="module" src="app.js?v=12"></script>
 </body>
 </html>

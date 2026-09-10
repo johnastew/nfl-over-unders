@@ -1,12 +1,16 @@
-import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=11';
-import { playPixelBurst } from './pixel-fx.js?v=11';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=11';
+import { TEAMS, TEAM_IDS, teamLogoUrl, teamColor, teamSecondaryColor } from './teams.js?v=12';
+import { playPixelBurst } from './pixel-fx.js?v=12';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './config.js?v=12';
 
 const STORAGE_KEY = 'nflou.user';
 const MAX_NAME_LENGTH = 40;
 
 // Everyone calls the same number of teams, and choosing which ones is part of the game.
 const MAX_PICKS = 6;
+
+// How long a pick's blurb can run. Matches the check constraint on notes.body in
+// supabase-schema.sql — change both together.
+const MAX_NOTE_LENGTH = 1200;
 
 // Picks lock at kickoff of the Wednesday opener: 8:20 PM ET on Sept 9, 2026.
 // September is EDT (UTC-4), hence 00:20Z on the 10th.
@@ -39,6 +43,7 @@ const views = {
 let user = null;
 let teams = [];
 let picks = {};
+let notes = {};
 
 function loadStoredUser() {
   try {
@@ -200,6 +205,35 @@ async function restSaveResult(teamId, wins, losses) {
   });
 }
 
+async function restFetchNotes(userId) {
+  const rows =
+    (await rest(`/notes?select=team_id,body&user_id=eq.${encodeURIComponent(userId)}`)) || [];
+  const out = {};
+  for (const row of rows) out[row.team_id] = row.body;
+  return out;
+}
+
+async function restSaveNote(userId, teamId, body) {
+  if (!TEAM_IDS.has(teamId)) throw new Error('Unknown team.');
+  await rest('/notes', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
+      user_id: userId,
+      team_id: teamId,
+      body,
+      updated_at: new Date().toISOString()
+    })
+  });
+}
+
+async function restRemoveNote(userId, teamId) {
+  await rest(
+    `/notes?user_id=eq.${encodeURIComponent(userId)}&team_id=eq.${encodeURIComponent(teamId)}`,
+    { method: 'DELETE' }
+  );
+}
+
 async function restFetchEveryone() {
   const [users, rows] = await Promise.all([
     rest('/users?select=id,name&order=created_at.asc,id.asc'),
@@ -289,6 +323,23 @@ async function localSaveResult(teamId, wins, losses) {
   writeLocal(store);
 }
 
+async function localFetchNotes(userId) {
+  return readLocal().notes?.[userId] || {};
+}
+
+async function localSaveNote(userId, teamId, body) {
+  if (!TEAM_IDS.has(teamId)) throw new Error('Unknown team.');
+  const store = readLocal();
+  ((store.notes ||= {})[userId] ||= {})[teamId] = body;
+  writeLocal(store);
+}
+
+async function localRemoveNote(userId, teamId) {
+  const store = readLocal();
+  if (store.notes?.[userId]) delete store.notes[userId][teamId];
+  writeLocal(store);
+}
+
 async function localFetchEveryone() {
   const store = readLocal();
   const counts = {};
@@ -315,7 +366,10 @@ const backend = isConfigured
       fetchEveryone: restFetchEveryone,
       fetchUsers: restFetchUsers,
       fetchResults: restFetchResults,
-      saveResult: restSaveResult
+      saveResult: restSaveResult,
+      fetchNotes: restFetchNotes,
+      saveNote: restSaveNote,
+      removeNote: restRemoveNote
     }
   : {
       signIn: localSignIn,
@@ -326,7 +380,10 @@ const backend = isConfigured
       fetchEveryone: localFetchEveryone,
       fetchUsers: localFetchUsers,
       fetchResults: localFetchResults,
-      saveResult: localSaveResult
+      saveResult: localSaveResult,
+      fetchNotes: localFetchNotes,
+      saveNote: localSaveNote,
+      removeNote: localRemoveNote
     };
 
 // --- Scoring ---------------------------------------------------------------------
@@ -447,9 +504,10 @@ function renderPicks() {
   const atLimit = picked >= MAX_PICKS;
   el('progress').textContent = `${picked} / ${MAX_PICKS} picks used`;
   el('pickHint').hidden = locked;
+  el('noteHint').hidden = !locked || !pickCount();
   el('pickHint').textContent = atLimit
-    ? `That's all ${MAX_PICKS}. Tap one of your picks to remove it and free a slot.`
-    : `Choose any ${MAX_PICKS} teams. Tap a pick again to remove it.`;
+    ? `That's all ${MAX_PICKS}. Tap one of your picks to remove it and free a slot — and say why you made each one.`
+    : `Choose any ${MAX_PICKS} teams. Tap a pick again to remove it. Each pick gets a box to explain it.`;
 
   const container = el('teamList');
   container.innerHTML = '';
@@ -521,9 +579,74 @@ function renderPicks() {
       }
 
       row.append(info, choices);
+      if (picks[team.id]) row.appendChild(noteEditor(team));
       section.appendChild(row);
     }
     container.appendChild(section);
+  }
+}
+
+// The blurb that sits under a pick, and the only place anyone writes for the article.
+// It only appears once the team is picked: there is nothing to explain about a team you
+// passed on. Unlike the picks themselves these keep saving all season — see the note on
+// the notes table in supabase-schema.sql.
+function noteEditor(team) {
+  const wrap = document.createElement('div');
+  wrap.className = 'note';
+
+  const label = document.createElement('label');
+  label.className = 'note-label';
+  label.htmlFor = `note-${team.id}`;
+  label.textContent = `Why ${picks[team.id] === 'over' ? 'over' : 'under'} ${team.line}?`;
+
+  const status = document.createElement('span');
+  status.className = 'note-status';
+
+  const area = document.createElement('textarea');
+  area.id = `note-${team.id}`;
+  area.className = 'note-input';
+  area.rows = 3;
+  area.maxLength = MAX_NOTE_LENGTH;
+  area.placeholder = 'A sentence or two on your reasoning — this is what the article prints.';
+  area.value = notes[team.id] || '';
+
+  let timer;
+  const flush = () => {
+    clearTimeout(timer);
+    saveNote(team.id, area.value, status);
+  };
+  area.addEventListener('input', () => {
+    status.textContent = '';
+    clearTimeout(timer);
+    timer = setTimeout(flush, 800);
+  });
+  // Leaving the field shouldn't wait out the timer, and neither should closing the tab.
+  area.addEventListener('blur', flush);
+
+  const head = document.createElement('div');
+  head.className = 'note-head';
+  head.append(label, status);
+  wrap.append(head, area);
+  return wrap;
+}
+
+async function saveNote(teamId, rawBody, status) {
+  const body = rawBody.trim();
+  if (body === (notes[teamId] || '')) return;
+  const previous = notes[teamId];
+  if (body) notes[teamId] = body;
+  else delete notes[teamId];
+  status.textContent = 'Saving…';
+  status.className = 'note-status';
+  try {
+    if (body) await backend.saveNote(user.id, teamId, body);
+    else await backend.removeNote(user.id, teamId);
+    status.textContent = body ? 'Saved' : 'Cleared';
+  } catch (error) {
+    if (previous === undefined) delete notes[teamId];
+    else notes[teamId] = previous;
+    status.textContent = `Not saved: ${error.message}`;
+    status.className = 'note-status note-failed';
   }
 }
 
@@ -596,16 +719,25 @@ async function selectPick(teamId, choice) {
 
   if (removing) delete picks[teamId];
   else picks[teamId] = choice;
+  const droppedNote = removing ? notes[teamId] : undefined;
+  if (removing) delete notes[teamId];
   renderPicks();
   showError(el('picksError'), '');
   if (!removing) burst(teamId);
 
   try {
-    if (removing) await backend.removePick(user.id, teamId);
-    else await backend.savePick(user.id, teamId, choice);
+    if (removing) {
+      await backend.removePick(user.id, teamId);
+      // A blurb about a pick you no longer hold has nothing to explain, and would
+      // otherwise reappear as-is if you took the team back later.
+      if (droppedNote) await backend.removeNote(user.id, teamId);
+    } else {
+      await backend.savePick(user.id, teamId, choice);
+    }
   } catch (error) {
     if (previous) picks[teamId] = previous;
     else delete picks[teamId];
+    if (droppedNote) notes[teamId] = droppedNote;
     renderPicks();
     showError(
       el('picksError'),
@@ -924,7 +1056,7 @@ async function populateUserPicker() {
 async function enterApp(nextUser) {
   user = nextUser;
   storeUser(user);
-  picks = await backend.fetchPicks(user.id);
+  [picks, notes] = await Promise.all([backend.fetchPicks(user.id), backend.fetchNotes(user.id)]);
   renderPicks();
   showView('picks');
 }
@@ -956,6 +1088,7 @@ el('userSelect').addEventListener('change', async (event) => {
 el('switchUser').addEventListener('click', () => {
   user = null;
   picks = {};
+  notes = {};
   storeUser(null);
   el('nameInput').value = '';
   showView('login');
@@ -983,7 +1116,10 @@ document.querySelectorAll('.tab').forEach((tab) => {
     // Confirm the remembered account still exists (the table may have been reset).
     const confirmed = await backend.fetchUser(stored.id);
     if (!confirmed) throw new Error('Unknown user.');
-    picks = await backend.fetchPicks(confirmed.id);
+    [picks, notes] = await Promise.all([
+      backend.fetchPicks(confirmed.id),
+      backend.fetchNotes(confirmed.id)
+    ]);
     user = confirmed;
     renderPicks();
     showView('picks');

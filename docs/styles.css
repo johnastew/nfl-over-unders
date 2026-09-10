@@ -108,6 +108,7 @@ input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px
 .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 .progress { font-size: 14px; color: var(--muted); }
+.toolbar-end { display: flex; align-items: center; gap: 14px; margin-left: auto; }
 
 .division { margin-bottom: 18px; }
 
@@ -127,6 +128,9 @@ input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* Wrapping matters even on wide screens: a pick's blurb is a full-width row of its
+     own beneath the team and its buttons. */
+  flex-wrap: wrap;
   gap: 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -417,3 +421,50 @@ caption {
 @media (max-width: 520px) {
   .person .record-col { display: none; }
 }
+
+/* --- Pick blurbs -------------------------------------------------------------- */
+/* The editor takes a full row of its own inside the flex team card. */
+.note {
+  flex: 1 1 100%;
+  width: 100%;
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+  margin-top: 2px;
+}
+
+.note-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.note-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.note-status { font-size: 12px; color: var(--muted); }
+.note-status.note-failed { color: var(--under); }
+
+.note-input {
+  width: 100%;
+  min-height: 62px;
+  resize: vertical;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.note-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.article-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 2px solid var(--under);
+  padding-bottom: 1px;
+}
+.article-link:hover { color: var(--under); }

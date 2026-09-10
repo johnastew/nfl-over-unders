@@ -32,6 +32,9 @@ export const SUPABASE_URL = 'https://abcdefgh.supabase.co';
 export const SUPABASE_ANON_KEY = 'eyJhbGciOi...';
 ```
 
+**Adding the blurbs to an existing database?** Re-run `supabase-schema.sql`; it creates
+the `notes` table if it isn't there and leaves everything else alone.
+
 **Changing the rules?** The 6-pick cap is enforced in two places that must agree: the
 `picks_limit` trigger in `supabase-schema.sql` and `MAX_PICKS` in `docs/app.js`. Edit both,
 re-run the SQL, and bump the cache-bust below.
@@ -98,6 +101,38 @@ readable through the API by anyone determined, since every row stays world-reada
 tab reappears on its own at kickoff, with no deploy needed.
 
 Entering results is deliberately **not** locked — that has to keep working all season.
+
+## Writing up your picks
+
+Under every team you've picked there's a box: **why did you make that call?** A sentence
+or two is plenty (1200 characters is the cap). It saves on its own — a moment after you
+stop typing, or as soon as you click away — and a small "Saved" appears next to the
+label.
+
+Unlike the picks themselves, **the blurbs never lock**. The bet has to freeze at kickoff;
+the argument around it doesn't, so you can keep writing and rewriting all season. That is
+why they live in their own `notes` table rather than as a column on `picks` — the
+deadline policies on `picks` would refuse the writes.
+
+Removing a pick removes its blurb too, since there's nothing left to explain. Switching a
+team between over and under keeps what you wrote, so you can edit it rather than retype
+it.
+
+### The article
+
+**Read the article →** in the toolbar opens [`docs/article.html`](docs/article.html) in a
+new tab: everyone's blurbs laid out as one long read, styled after The Athletic — serif
+body, a narrow measure, a section per person, and each call introduced by its team, side
+and odds. It writes its own headline furniture from the data: how many calls have been
+explained, who is on the byline, and which team the group agrees on hardest.
+
+Picks with no blurb are left out (a line at the end of each person's section counts how
+many went unexplained), and a blurb whose pick was later removed doesn't appear. The page
+is just a reader — it loads the same picks and notes and never writes anything — so
+sending someone the link is safe even if they aren't playing.
+
+It's a plain URL, so you can share
+`https://johnastew.github.io/nfl-over-unders/article.html` directly in the group chat.
 
 ## Scoring
 
