@@ -159,9 +159,15 @@ A team is scored as soon as it is **mathematically settled**, not at season's en
 Everything else shows as pending and counts for nobody, so the leaderboard is meaningful
 from midseason on rather than sitting empty until January.
 
-Records are entered under **Enter results** on the same tab: a W and an L per team.
-Anyone can edit them — the same open trust model as picks — so agree among yourselves who
-keeps them current. Count a tie as half a win.
+Records update themselves: the **Update results** GitHub Actions workflow
+(`.github/workflows/update-results.yml`) pulls every team's record from ESPN's standings
+each Tuesday morning, after Monday Night Football, and saves all 32. To catch up
+mid-week, run it from the Actions tab (**Update results → Run workflow**).
+
+Records can also be edited by hand under **Enter results** on the same tab: a W and an L
+per team. Anyone can edit them — the same open trust model as picks — but the next
+Tuesday run overwrites hand edits with ESPN's numbers. Count a tie as half a win and half
+a loss.
 
 ## Team colors
 

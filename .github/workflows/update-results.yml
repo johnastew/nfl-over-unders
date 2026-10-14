@@ -1,0 +1,58 @@
+# Pulls every team's record from ESPN's standings and saves it to the results table, so
+# nobody has to type records in by hand. Runs Tuesday mornings, after Monday Night
+# Football has finished. Run it manually from the Actions tab to catch up mid-week.
+#
+# On a pull request it only prints what it would save, without writing anything.
+name: Update results
+
+on:
+  schedule:
+    - cron: '13 14 * * 2' # Tuesdays, 14:13 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/update-results.yml
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch standings from ESPN
+        run: |
+          curl -fsS 'https://site.api.espn.com/apis/v2/sports/football/nfl/standings' -o standings.json
+          # ESPN calls Washington WSH; this app calls it WAS. A tie counts as half a win
+          # and half a loss, which keeps the app's "17 - losses" ceiling on wins correct.
+          jq '[.children[].standings.entries[]
+                | (.stats | map({(.name): .value}) | add) as $s
+                | {team_id: (.team.abbreviation | if . == "WSH" then "WAS" else . end),
+                   wins: ($s.wins + $s.ties / 2),
+                   losses: ($s.losses + $s.ties / 2)}]' standings.json > results.json
+
+          ids=$(grep -oP "\{ id: '\K[A-Z]+" docs/teams.js | sort | tr '\n' ' ')
+          got=$(jq -r '.[].team_id' results.json | sort | tr '\n' ' ')
+          if [ "$ids" != "$got" ]; then
+            echo "::error::ESPN teams don't match docs/teams.js"
+            echo "expected: $ids"
+            echo "got:      $got"
+            exit 1
+          fi
+          jq -r '.[] | "\(.team_id)\t\(.wins)-\(.losses)"' results.json | sort
+
+      - name: Save to Supabase
+        if: github.event_name != 'pull_request'
+        run: |
+          url=$(grep -oP "SUPABASE_URL = '\K[^']+" docs/config.js)
+          key=$(grep -oP "SUPABASE_ANON_KEY = '\K[^']+" docs/config.js)
+          now=$(date -u +%FT%TZ)
+          jq --arg now "$now" 'map(. + {updated_at: $now})' results.json |
+            curl -fsS -X POST "$url/rest/v1/results" \
+              -H "apikey: $key" -H "Authorization: Bearer $key" \
+              -H 'Content-Type: application/json' \
+              -H 'Prefer: resolution=merge-duplicates,return=minimal' \
+              --data-binary @-
+          echo "Saved ${now}"
